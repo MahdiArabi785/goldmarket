@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // یا "sqlite" برای توسعه سریع
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  name          String?
+  role          Role      @default(BUYER)
+  walletBalance Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  products      Product[]
+  orders        Order[]
+}
+
+enum Role {
+  BUYER
+  SELLER
+  EXPERT
+  ADMIN
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  sellerId      String
+  seller        User          @relation(fields: [sellerId], references: [id])
+  type          ProductType
+  name          String
+  weight        Float         // گرم
+  karat         Int           // ۱۸، ۲۴ و...
+  wage          Float         // اجرت ساخت
+  profitPercent Float         @default(7) // درصد سود فروشنده
+  finalPrice    Float         // محاسبه خودکار
+  stock         Int           @default(1)
+  barcode       String?
+  isVerified    Boolean       @default(false) // برای طلای دست دوم
+  images        String[]
+  createdAt     DateTime      @default(now())
+  orders        Order[]
+}
+
+enum ProductType {
+  NEW
+  SECOND_HAND
+  MELTED
+}
+
+model Order {
+  id         String        @id @default(cuid())
+  buyerId    String
+  buyer      User          @relation(fields: [buyerId], references: [id])
+  productId  String
+  product    Product       @relation(fields: [productId], references: [id])
+  quantity   Int           @default(1)
+  totalPrice Float
+  status     OrderStatus   @default(PENDING)
+  createdAt  DateTime      @default(now())
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  price     Float
+  date      DateTime @default(now())
+}
+
+model ExpertRequest {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  productId  String?
+  status     String   @default("pending")
+  images     String[]
+  weight     Float?
+  karat      Int?
+  createdAt  DateTime @default(now())
+}
+
+// مدل‌های NextAuth (ضروری)
+model Account { ... }
+model Session { ... }
+model VerificationToken { ... }

@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +8,7 @@ import { Plus, Package, DollarSign, TrendingUp } from "lucide-react"
 import Link from "next/link"
 
 export default async function SellerDashboard() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user) redirect("/auth/login")
 
   const userId = (session.user as any).id
@@ -72,7 +71,6 @@ export default async function SellerDashboard() {
         </Link>
       </div>
 
-      {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
@@ -91,7 +89,6 @@ export default async function SellerDashboard() {
         ))}
       </div>
 
-      {/* محصولات */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>محصولات شما</CardTitle>

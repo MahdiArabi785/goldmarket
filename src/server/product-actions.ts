@@ -2,13 +2,12 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { calculateGoldPrice } from "@/lib/price-calculator"
 import { ProductType } from "@prisma/client"
 
 export async function createProduct(formData: FormData) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const user = await prisma.user.findUnique({ where: { id: (session.user as any).id } })
@@ -54,14 +53,14 @@ async function getLiveGoldPrice(): Promise<number> {
     const lastPrice = await prisma.priceHistory.findFirst({
       orderBy: { createdAt: "desc" },
     })
-    return lastPrice?.price || 20000000 // قیمت پیش‌فرض
+    return lastPrice?.price || 20000000
   } catch {
     return 20000000
   }
 }
 
 export async function updateProduct(productId: string, formData: FormData) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const product = await prisma.product.findUnique({ where: { id: productId } })
@@ -91,7 +90,7 @@ export async function updateProduct(productId: string, formData: FormData) {
 }
 
 export async function deleteProduct(productId: string) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const product = await prisma.product.findUnique({ where: { id: productId } })

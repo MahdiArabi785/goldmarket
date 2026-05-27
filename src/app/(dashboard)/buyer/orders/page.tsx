@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getBuyerOrders, cancelOrder } from "@/server/order-actions"
+import { getBuyerOrders } from "@/server/order-actions"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { CancelOrderButton } from "@/components/cancel-order-button"
 import Link from "next/link"
@@ -30,7 +29,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 export default async function OrdersPage() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user) redirect("/auth/login")
 
   const orders = await getBuyerOrders()
@@ -58,7 +57,6 @@ export default async function OrdersPage() {
             <Card key={order.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
-                  {/* اطلاعات محصول */}
                   <div className="flex-1">
                     <div className="flex items-start gap-4">
                       <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -93,7 +91,6 @@ export default async function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* قیمت و اقدامات */}
                   <div className="flex flex-col items-end justify-between gap-2">
                     <div className="text-left">
                       <p className="text-sm text-gray-500">مبلغ پرداختی</p>

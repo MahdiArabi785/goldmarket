@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { prisma } from "@/lib/prisma"
@@ -8,7 +7,7 @@ import { Wallet, ShoppingBag, TrendingUp, Package } from "lucide-react"
 import Link from "next/link"
 
 export default async function BuyerDashboard() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user) redirect("/auth/login")
 
   const userId = (session.user as any).id
@@ -63,7 +62,6 @@ export default async function BuyerDashboard() {
         <p className="text-gray-600 mt-2">به داشبورد خریدار خوش آمدید</p>
       </div>
 
-      {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
@@ -82,7 +80,6 @@ export default async function BuyerDashboard() {
         ))}
       </div>
 
-      {/* لینک‌های سریع */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Link href="/market" className="block p-4 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors text-center font-medium">
           🛒 بازار طلا
@@ -98,7 +95,6 @@ export default async function BuyerDashboard() {
         </Link>
       </div>
 
-      {/* سفارشات اخیر */}
       <Card className="border-0 shadow-md mb-8">
         <CardHeader>
           <CardTitle>سفارشات اخیر</CardTitle>

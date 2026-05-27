@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { prisma } from "@/lib/prisma"
@@ -7,7 +6,7 @@ import { ExpertRequestCard } from "@/components/expert-request-card"
 import { Shield, Clock, CheckCircle, XCircle } from "lucide-react"
 
 export default async function ExpertDashboard() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user) redirect("/auth/login")
 
   const userId = (session.user as any).id
@@ -56,7 +55,6 @@ export default async function ExpertDashboard() {
         <p className="text-gray-600 mt-2">بررسی و تأیید طلاهای دست دوم</p>
       </div>
 
-      {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
@@ -75,7 +73,6 @@ export default async function ExpertDashboard() {
         ))}
       </div>
 
-      {/* درخواست‌های در انتظار */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>درخواست‌های در انتظار بررسی</CardTitle>

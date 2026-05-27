@@ -1,17 +1,13 @@
-import { NextAuthOptions } from "next-auth"
+import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // ۳۰ روز
-  },
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
   pages: {
-    signIn: '/auth/login',
-    error: '/auth/error',
+    signIn: '/login',
   },
   providers: [
     CredentialsProvider({
@@ -27,11 +23,9 @@ export const authOptions: NextAuthOptions = {
 
         const verificationToken = await prisma.verificationToken.findFirst({
           where: {
-            identifier: credentials.phone,
-            token: credentials.code,
-            expires: {
-              gt: new Date(),
-            },
+            identifier: credentials.phone as string,
+            token: credentials.code as string,
+            expires: { gt: new Date() },
           },
         })
 
@@ -42,17 +36,17 @@ export const authOptions: NextAuthOptions = {
         await prisma.verificationToken.delete({
           where: {
             identifier_token: {
-              identifier: credentials.phone,
-              token: credentials.code,
+              identifier: credentials.phone as string,
+              token: credentials.code as string,
             },
           },
         })
 
         const user = await prisma.user.upsert({
-          where: { phone: credentials.phone },
+          where: { phone: credentials.phone as string },
           update: { phoneVerified: new Date() },
           create: {
-            phone: credentials.phone,
+            phone: credentials.phone as string,
             phoneVerified: new Date(),
             role: "BUYER",
           },
@@ -85,4 +79,4 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-}
+})

@@ -2,17 +2,15 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 
 export async function createOrder(productId: string, quantity: number = 1) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const buyerId = (session.user as any).id
 
   return await prisma.$transaction(async (tx) => {
-    // دریافت محصول با اطلاعات فروشنده
     const product = await tx.product.findUnique({
       where: { id: productId },
       include: { seller: true },
@@ -22,26 +20,22 @@ export async function createOrder(productId: string, quantity: number = 1) {
     if (product.stock < quantity) throw new Error("موجودی کافی نیست")
     if (product.sellerId === buyerId) throw new Error("نمی‌توانید محصول خود را خریداری کنید")
 
-    // بررسی موجودی کیف پول خریدار
     const buyer = await tx.user.findUnique({ where: { id: buyerId } })
     if (!buyer) throw new Error("کاربر یافت نشد")
 
     const totalPrice = product.finalPrice * quantity
     if (buyer.walletBalance < totalPrice) throw new Error("موجودی کیف پول کافی نیست")
 
-    // کسر از کیف پول خریدار
     await tx.user.update({
       where: { id: buyerId },
       data: { walletBalance: { decrement: totalPrice } },
     })
 
-    // واریز به کیف پول فروشنده
     await tx.user.update({
       where: { id: product.sellerId },
       data: { walletBalance: { increment: totalPrice } },
     })
 
-    // ثبت تراکنش خرید
     await tx.walletTransaction.create({
       data: {
         userId: buyerId,
@@ -51,7 +45,6 @@ export async function createOrder(productId: string, quantity: number = 1) {
       },
     })
 
-    // ثبت تراکنش فروش
     await tx.walletTransaction.create({
       data: {
         userId: product.sellerId,
@@ -61,13 +54,11 @@ export async function createOrder(productId: string, quantity: number = 1) {
       },
     })
 
-    // کاهش موجودی
     await tx.product.update({
       where: { id: productId },
       data: { stock: { decrement: quantity } },
     })
 
-    // ثبت سفارش
     const order = await tx.order.create({
       data: {
         buyerId,
@@ -97,7 +88,7 @@ export async function createOrder(productId: string, quantity: number = 1) {
 }
 
 export async function cancelOrder(orderId: string) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const userId = (session.user as any).id
@@ -114,25 +105,21 @@ export async function cancelOrder(orderId: string) {
       throw new Error("این سفارش قابل لغو نیست")
     }
 
-    // بازگشت پول به خریدار
     await tx.user.update({
       where: { id: order.buyerId },
       data: { walletBalance: { increment: order.totalPrice } },
     })
 
-    // کسر از فروشنده
     await tx.user.update({
       where: { id: order.product.sellerId },
       data: { walletBalance: { decrement: order.totalPrice } },
     })
 
-    // افزایش موجودی محصول
     await tx.product.update({
       where: { id: order.productId },
       data: { stock: { increment: order.quantity } },
     })
 
-    // ثبت تراکنش‌ها
     await tx.walletTransaction.create({
       data: {
         userId: order.buyerId,
@@ -165,7 +152,7 @@ export async function cancelOrder(orderId: string) {
 }
 
 export async function getBuyerOrders() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const buyerId = (session.user as any).id
@@ -186,7 +173,7 @@ export async function getBuyerOrders() {
 }
 
 export async function getSellerOrders() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const sellerId = (session.user as any).id

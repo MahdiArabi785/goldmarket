@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -10,7 +9,7 @@ import { WalletWithdrawForm } from "@/components/wallet-withdraw-form"
 import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 export default async function WalletPage() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user) redirect("/auth/login")
 
   const userId = (session.user as any).id
@@ -40,7 +39,6 @@ export default async function WalletPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* موجودی فعلی */}
         <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-400 to-amber-500 text-white col-span-1 md:col-span-3">
           <CardContent className="p-8 text-center">
             <Wallet className="w-12 h-12 mx-auto mb-4 opacity-80" />
@@ -50,7 +48,6 @@ export default async function WalletPage() {
           </CardContent>
         </Card>
 
-        {/* واریز */}
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -64,7 +61,6 @@ export default async function WalletPage() {
           </CardContent>
         </Card>
 
-        {/* برداشت */}
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -78,7 +74,6 @@ export default async function WalletPage() {
           </CardContent>
         </Card>
 
-        {/* تعداد تراکنش */}
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -93,7 +88,6 @@ export default async function WalletPage() {
         </Card>
       </div>
 
-      {/* فرم‌های شارژ و برداشت */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card className="border-0 shadow-md">
           <CardHeader>
@@ -114,7 +108,6 @@ export default async function WalletPage() {
         </Card>
       </div>
 
-      {/* تاریخچه تراکنش‌ها */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>تاریخچه تراکنش‌ها</CardTitle>

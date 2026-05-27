@@ -56,7 +56,7 @@ export default function HomePage() {
                 <ArrowLeft className="mr-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/auth/login">
+            <Link href="/login">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-2">
                 ورود / ثبت‌نام
               </Button>
@@ -96,7 +96,7 @@ export default function HomePage() {
           <p className="text-white/90 mb-8 text-lg">
             رایگان ثبت‌نام کنید و از بازار شفاف طلا لذت ببرید
           </p>
-          <Link href="/auth/login">
+          <Link href="/login">
             <Button size="lg" variant="secondary" className="text-lg px-10 py-6 bg-white text-yellow-600 hover:bg-gray-100">
               ورود به GoldMarket
             </Button>

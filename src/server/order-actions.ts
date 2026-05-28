@@ -156,7 +156,6 @@ export async function getBuyerOrders() {
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const buyerId = (session.user as any).id
-
   return prisma.order.findMany({
     where: { buyerId },
     include: {
@@ -177,7 +176,6 @@ export async function getSellerOrders() {
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const sellerId = (session.user as any).id
-
   return prisma.order.findMany({
     where: {
       product: { sellerId },

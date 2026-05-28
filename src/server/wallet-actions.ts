@@ -2,21 +2,19 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 
 export async function getWalletBalance(): Promise<number> {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const userId = (session.user as any).id
   const user = await prisma.user.findUnique({ where: { id: userId } })
-  
   return user?.walletBalance || 0
 }
 
 export async function depositToWallet(amount: number) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const userId = (session.user as any).id
@@ -41,13 +39,12 @@ export async function depositToWallet(amount: number) {
 
     revalidatePath("/wallet")
     revalidatePath("/dashboard/buyer")
-
     return transaction
   })
 }
 
 export async function withdrawFromWallet(amount: number) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const userId = (session.user as any).id
@@ -73,17 +70,15 @@ export async function withdrawFromWallet(amount: number) {
 
     revalidatePath("/wallet")
     revalidatePath("/dashboard/buyer")
-
     return transaction
   })
 }
 
 export async function getWalletTransactions() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const userId = (session.user as any).id
-
   return prisma.walletTransaction.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },

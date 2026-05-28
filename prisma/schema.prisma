@@ -11,12 +11,15 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   phone         String?   @unique
+  email         String?   @unique
+  password      String?
   phoneVerified DateTime?
   image         String?
   role          String    @default("BUYER")
   walletBalance Float     @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
   accounts      Account[]
   sessions      Session[]
   products      Product[]
@@ -40,6 +43,7 @@ model Account {
   id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -55,6 +59,7 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+
   @@unique([identifier, token])
 }
 
@@ -72,10 +77,11 @@ model Product {
   stock         Int      @default(1)
   barcode       String?
   isVerified    Boolean  @default(false)
-  images        String   @default("[]")
+  images        String   @default("[]")        // ذخیره به‌صورت JSON
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   orders        Order[]
 }
 
@@ -116,7 +122,7 @@ model ExpertRequest {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId   String?
   status      String   @default("PENDING")
-  images      String   @default("[]")
+  images      String   @default("[]")        // ذخیره به‌صورت JSON
   weight      Float?
   karat       Int?
   notes       String?

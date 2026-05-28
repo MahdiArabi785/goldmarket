@@ -9,7 +9,7 @@ import Link from "next/link"
 
 export default async function SellerDashboard() {
   const session = await auth()
-  if (!session?.user) redirect("/auth/login")
+  if (!session?.user) redirect("/login")
 
   const userId = (session.user as any).id
 
@@ -106,22 +106,37 @@ export default async function SellerDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {products.slice(0, 10).map((product) => (
-                <div key={product.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-gray-500">
-                      موجودی: {product.stock} | {product.weight} گرم
-                    </p>
+              {products.map((product) => {
+                // پارس images برای نمایش
+                const images: string[] = typeof product.images === "string" ? JSON.parse(product.images) : product.images
+                return (
+                  <div key={product.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                        {images[0] ? (
+                          <img src={images[0]} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xl flex items-center justify-center h-full">🪙</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium">{product.name}</p>
+                        <p className="text-sm text-gray-500">
+                          موجودی: {product.stock} | {product.weight} گرم
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left flex items-center gap-4">
+                      <div>
+                        <p className="font-bold text-yellow-600">{formatCurrency(product.finalPrice)} تومان</p>
+                      </div>
+                      <Link href={`/dashboard/seller/products/${product.id}`}>
+                        <Button variant="outline" size="sm">ویرایش</Button>
+                      </Link>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-bold text-yellow-600">{formatCurrency(product.finalPrice)} تومان</p>
-                    <Link href={`/dashboard/seller/products/${product.id}`} className="text-sm text-yellow-600 hover:underline">
-                      ویرایش
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

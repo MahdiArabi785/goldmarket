@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { formatCurrency } from "@/lib/utils"
+import { Heart } from "lucide-react"
 
 const TYPE_LABEL: Record<string, string> = {
   NEW: "طلا نو",
@@ -19,6 +20,9 @@ const TYPE_COLOR: Record<string, string> = {
 }
 
 export function ProductCard({ product }: { product: any }) {
+  // پارس images
+  const images: string[] = typeof product.images === "string" ? JSON.parse(product.images) : product.images
+
   const isLowStock = product.stock <= 3 && product.stock > 0
   const isOutOfStock = product.stock === 0
 
@@ -26,7 +30,7 @@ export function ProductCard({ product }: { product: any }) {
     <Card className="group relative overflow-hidden rounded-2xl border-0 shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       <div className="relative aspect-square overflow-hidden bg-gray-100">
         <Image
-          src={product.images?.[0] || "/placeholder.png"}
+          src={images?.[0] || "/placeholder.png"}
           alt={product.name}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -45,7 +49,12 @@ export function ProductCard({ product }: { product: any }) {
           )}
         </div>
 
-        {/* Overlay ناموجود */}
+        {/* دکمه علاقه‌مندی */}
+        <button className="absolute top-3 left-3 p-2 bg-white/80 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white">
+          <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition-colors" />
+        </button>
+
+        {/* موجودی صفر */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <span className="text-white text-xl font-bold">ناموجود</span>
@@ -92,9 +101,7 @@ export function ProductCard({ product }: { product: any }) {
             </span>
             <span className="text-sm text-gray-500 mr-1">تومان</span>
           </div>
-          <span className="text-xs text-gray-400">
-            سود {product.profitPercent}٪
-          </span>
+          <span className="text-xs text-gray-400">سود {product.profitPercent}٪</span>
         </div>
       </CardContent>
 

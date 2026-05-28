@@ -1,60 +1,89 @@
+// src/lib/auth.ts
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt" as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   pages: {
-    signIn: '/login',
+    signIn: "/login",
+    error: "/login",
   },
   providers: [
     CredentialsProvider({
-      name: "OTP",
+      name: "credentials",
       credentials: {
-        phone: { label: "شماره موبایل", type: "text" },
+        identifier: { label: "شماره یا ایمیل", type: "text" },
         code: { label: "کد تأیید", type: "text" },
+        username: { label: "نام کاربری (مدیر)", type: "text" },
+        password: { label: "رمز عبور (مدیر)", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.code) {
-          throw new Error("شماره موبایل و کد تأیید الزامی است")
+        // Admin root login (direct)
+        if (credentials?.username === "root" && credentials?.password === "toor") {
+          const user = await prisma.user.findFirst({
+            where: { phone: "root" },
+          })
+          if (user && user.role === "ADMIN") {
+            return {
+              id: user.id,
+              phone: user.phone,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+            }
+          }
+          throw new Error("حساب مدیر ریشه پیدا نشد")
         }
 
-        const verificationToken = await prisma.verificationToken.findFirst({
+        // OTP login
+        if (!credentials?.identifier || !credentials?.code) {
+          throw new Error("اطلاعات ناقص است")
+        }
+
+        const token = await prisma.verificationToken.findFirst({
           where: {
-            identifier: credentials.phone as string,
+            identifier: credentials.identifier as string,
             token: credentials.code as string,
             expires: { gt: new Date() },
           },
         })
 
-        if (!verificationToken) {
+        if (!token) {
           throw new Error("کد تأیید نامعتبر یا منقضی شده است")
         }
 
         await prisma.verificationToken.delete({
           where: {
             identifier_token: {
-              identifier: credentials.phone as string,
-              token: credentials.code as string,
+              identifier: token.identifier,
+              token: token.token,
             },
           },
         })
 
-        const user = await prisma.user.upsert({
-          where: { phone: credentials.phone as string },
-          update: { phoneVerified: new Date() },
-          create: {
-            phone: credentials.phone as string,
-            phoneVerified: new Date(),
-            role: "BUYER",
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { phone: token.identifier },
+              { email: token.identifier },
+            ],
           },
         })
+
+        if (!user) {
+          throw new Error("کاربری با این مشخصات یافت نشد")
+        }
 
         return {
           id: user.id,
           phone: user.phone,
+          email: user.email,
           name: user.name,
           role: user.role,
         }
@@ -62,21 +91,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
-        token.id = user.id
-        token.phone = (user as any).phone
-        token.role = (user as any).role
+        token.sub = user.id
+        token.phone = user.phone
+        token.email = user.email
+        token.role = user.role
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
-        (session.user as any).id = token.id
-        (session.user as any).phone = token.phone
-        (session.user as any).role = token.role
+        session.user.id = token.sub
+        session.user.phone = token.phone
+        session.user.email = token.email
+        session.user.role = token.role
       }
       return session
     },
   },
-})
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)

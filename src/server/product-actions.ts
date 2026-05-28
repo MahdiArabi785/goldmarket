@@ -6,6 +6,19 @@ import { auth } from "@/lib/auth"
 import { calculateGoldPrice } from "@/lib/price-calculator"
 import { ProductType } from "@prisma/client"
 
+// دریافت قیمت زنده طلا (موقت)
+async function getLiveGoldPrice(): Promise<number> {
+  try {
+    const lastPrice = await prisma.priceHistory.findFirst({
+      orderBy: { createdAt: "desc" },
+    })
+    return lastPrice?.price || 20000000
+  } catch {
+    return 20000000
+  }
+}
+
+// ایجاد محصول جدید
 export async function createProduct(formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -26,6 +39,9 @@ export async function createProduct(formData: FormData) {
   const liveGoldPrice = await getLiveGoldPrice()
   const priceBreakdown = calculateGoldPrice(weight, liveGoldPrice, wage, profitPercent)
 
+  // استفاده از یک تصویر جایگزین که محدودیت ندارد
+  const images = JSON.stringify(["https://via.placeholder.com/400"])
+
   const product = await prisma.product.create({
     data: {
       sellerId: user.id,
@@ -39,7 +55,7 @@ export async function createProduct(formData: FormData) {
       stock,
       description,
       barcode,
-      images: ["https://picsum.photos/seed/gold-product/400/400"],
+      images,
     },
   })
 
@@ -48,17 +64,7 @@ export async function createProduct(formData: FormData) {
   return product
 }
 
-async function getLiveGoldPrice(): Promise<number> {
-  try {
-    const lastPrice = await prisma.priceHistory.findFirst({
-      orderBy: { createdAt: "desc" },
-    })
-    return lastPrice?.price || 20000000
-  } catch {
-    return 20000000
-  }
-}
-
+// ویرایش محصول
 export async function updateProduct(productId: string, formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -89,6 +95,7 @@ export async function updateProduct(productId: string, formData: FormData) {
   return updatedProduct
 }
 
+// حذف محصول
 export async function deleteProduct(productId: string) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -104,6 +111,7 @@ export async function deleteProduct(productId: string) {
   return { success: true }
 }
 
+// دریافت محصولات (برای بازار)
 export async function getProducts(filters?: {
   type?: ProductType
   minWeight?: number
@@ -131,7 +139,7 @@ export async function getProducts(filters?: {
     default: orderBy.createdAt = "desc"
   }
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
     orderBy,
     include: {
@@ -140,4 +148,10 @@ export async function getProducts(filters?: {
       },
     },
   })
+
+  // تبدیل فیلد images از JSON String به آرایه
+  return products.map((product) => ({
+    ...product,
+    images: JSON.parse(product.images),
+  }))
 }

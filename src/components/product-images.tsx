@@ -4,9 +4,17 @@ import { useState } from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 
-export function ProductImages({ images, name }: { images: string[]; name: string }) {
+interface ProductImagesProps {
+  images: string[] | string  // می‌تواند JSON string یا آرایه باشد
+  name: string
+}
+
+export function ProductImages({ images, name }: ProductImagesProps) {
+  // تبدیل images به آرایه
+  const parsedImages: string[] = typeof images === "string" ? JSON.parse(images) : images
+  const displayImages = parsedImages.length > 0 ? parsedImages : ["/placeholder.png"]
+
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const displayImages = images.length > 0 ? images : ["/placeholder.png"]
 
   return (
     <div className="space-y-4">

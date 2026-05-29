@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/prisma"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, parseImagesSafe } from "@/lib/utils"
 import { Plus, Package, DollarSign, TrendingUp } from "lucide-react"
 import Link from "next/link"
 
@@ -107,17 +107,12 @@ export default async function SellerDashboard() {
           ) : (
             <div className="space-y-4">
               {products.map((product) => {
-                // پارس images برای نمایش
-                const images: string[] = typeof product.images === "string" ? JSON.parse(product.images) : product.images
+                const images = parseImagesSafe(product.images)
                 return (
                   <div key={product.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                        {images[0] ? (
-                          <img src={images[0]} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xl flex items-center justify-center h-full">🪙</span>
-                        )}
+                        <img src={images[0]} alt="" className="w-full h-full object-cover"/>
                       </div>
                       <div>
                         <p className="font-medium">{product.name}</p>

@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { calculateGoldPrice } from "@/lib/price-calculator"
 import { ProductType } from "@prisma/client"
+import { parseImagesSafe } from "@/lib/utils"
 
-// دریافت قیمت زنده طلا (موقت)
 async function getLiveGoldPrice(): Promise<number> {
   try {
     const lastPrice = await prisma.priceHistory.findFirst({
@@ -18,7 +18,6 @@ async function getLiveGoldPrice(): Promise<number> {
   }
 }
 
-// ایجاد محصول جدید
 export async function createProduct(formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -33,14 +32,18 @@ export async function createProduct(formData: FormData) {
   const wage = parseFloat(formData.get("wage") as string) || 0
   const profitPercent = parseFloat(formData.get("profitPercent") as string) || 7
   const stock = parseInt(formData.get("stock") as string) || 1
-  const description = formData.get("description") as string
-  const barcode = formData.get("barcode") as string
+  const description = formData.get("description") as string || ""
+  const barcode = formData.get("barcode") as string || ""
+
+  const imageUrlsRaw = formData.get("imageUrls") as string || "[]"
+  let imageUrls: string[] = parseImagesSafe(imageUrlsRaw)
+  // اگر کاربر هیچ تصویری وارد نکرده بود، تصویر پیش‌فرض را بگذاریم
+  if (imageUrls.length === 1 && imageUrls[0] === "/placeholder.svg" && imageUrlsRaw.trim() === "") {
+    imageUrls = ["/placeholder.svg"]
+  }
 
   const liveGoldPrice = await getLiveGoldPrice()
   const priceBreakdown = calculateGoldPrice(weight, liveGoldPrice, wage, profitPercent)
-
-  // استفاده از یک تصویر جایگزین که محدودیت ندارد
-  const images = JSON.stringify(["https://via.placeholder.com/400"])
 
   const product = await prisma.product.create({
     data: {
@@ -55,7 +58,7 @@ export async function createProduct(formData: FormData) {
       stock,
       description,
       barcode,
-      images,
+      images: JSON.stringify(imageUrls),
     },
   })
 
@@ -64,7 +67,6 @@ export async function createProduct(formData: FormData) {
   return product
 }
 
-// ویرایش محصول
 export async function updateProduct(productId: string, formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -75,19 +77,27 @@ export async function updateProduct(productId: string, formData: FormData) {
   }
 
   const liveGoldPrice = await getLiveGoldPrice()
-  const wage = parseFloat(formData.get("wage") as string) || product.wage
-  const profitPercent = parseFloat(formData.get("profitPercent") as string) || product.profitPercent
+  const wage = formData.get("wage") ? parseFloat(formData.get("wage") as string) : product.wage
+  const profitPercent = formData.get("profitPercent") ? parseFloat(formData.get("profitPercent") as string) : product.profitPercent
   const priceBreakdown = calculateGoldPrice(product.weight, liveGoldPrice, wage, profitPercent)
+
+  const updateData: any = {
+    wage,
+    profitPercent,
+    finalPrice: priceBreakdown.finalPrice,
+    stock: formData.get("stock") ? parseInt(formData.get("stock") as string) : product.stock,
+    description: formData.get("description") as string ?? product.description,
+  }
+
+  const imageUrlsRaw = formData.get("imageUrls") as string | null
+  if (imageUrlsRaw !== null) {
+    const imageUrls = parseImagesSafe(imageUrlsRaw)
+    updateData.images = JSON.stringify(imageUrls)
+  }
 
   const updatedProduct = await prisma.product.update({
     where: { id: productId },
-    data: {
-      wage,
-      profitPercent,
-      finalPrice: priceBreakdown.finalPrice,
-      stock: parseInt(formData.get("stock") as string) || product.stock,
-      description: formData.get("description") as string,
-    },
+    data: updateData,
   })
 
   revalidatePath("/dashboard/seller/products")
@@ -95,7 +105,6 @@ export async function updateProduct(productId: string, formData: FormData) {
   return updatedProduct
 }
 
-// حذف محصول
 export async function deleteProduct(productId: string) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
@@ -111,7 +120,6 @@ export async function deleteProduct(productId: string) {
   return { success: true }
 }
 
-// دریافت محصولات (برای بازار)
 export async function getProducts(filters?: {
   type?: ProductType
   minWeight?: number
@@ -149,9 +157,8 @@ export async function getProducts(filters?: {
     },
   })
 
-  // تبدیل فیلد images از JSON String به آرایه
   return products.map((product) => ({
     ...product,
-    images: JSON.parse(product.images),
+    images: parseImagesSafe(product.images),
   }))
 }

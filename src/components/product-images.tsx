@@ -2,26 +2,22 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { cn, parseImagesSafe } from "@/lib/utils"
 
 interface ProductImagesProps {
-  images: string[] | string  // می‌تواند JSON string یا آرایه باشد
+  images: string[] | string
   name: string
 }
 
 export function ProductImages({ images, name }: ProductImagesProps) {
-  // تبدیل images به آرایه
-  const parsedImages: string[] = typeof images === "string" ? JSON.parse(images) : images
-  const displayImages = parsedImages.length > 0 ? parsedImages : ["/placeholder.png"]
-
+  const parsedImages = parseImagesSafe(images)
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   return (
     <div className="space-y-4">
-      {/* تصویر اصلی */}
       <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 shadow-lg">
         <Image
-          src={displayImages[selectedIndex]}
+          src={parsedImages[selectedIndex]}
           alt={name}
           fill
           className="object-cover"
@@ -30,10 +26,9 @@ export function ProductImages({ images, name }: ProductImagesProps) {
         />
       </div>
 
-      {/* تصاویر بندانگشتی */}
-      {displayImages.length > 1 && (
+      {parsedImages.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {displayImages.map((image, index) => (
+          {parsedImages.map((image, index) => (
             <button
               key={index}
               onClick={() => setSelectedIndex(index)}

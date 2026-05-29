@@ -1,154 +1,110 @@
-import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/prisma"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { formatCurrency } from "@/lib/utils"
-import { PurchaseForm } from "@/components/purchase-form"
-import { ProductImages } from "@/components/product-images"
-import { PriceBreakdownDisplay } from "@/components/price-breakdown"
-import { Shield, Weight, Gem, User } from "lucide-react"
+import { Wallet, ShoppingBag, Package } from "lucide-react"
+import Link from "next/link"
 
-const TYPE_LABEL: Record<string, string> = {
-  NEW: "طلا نو",
-  SECOND_HAND: "دست دوم",
-  MELTED: "آب شده",
-}
-
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ Id: string }>
-}) {
+export default async function BuyerDashboard() {
   const session = await auth()
   if (!session?.user) redirect("/login")
 
-  const { Id } = await params
+  const userId = (session.user as any).id
 
-  const product = await prisma.product.findUnique({
-    where: { id: Id },
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
     include: {
-      seller: {
-        select: { name: true, phone: true, _count: { select: { products: true } } },
+      orders: {
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { product: true },
       },
     },
   })
 
-  if (!product) notFound()
+  if (!user) redirect("/login")
 
-  const isSeller = (session.user as any).id === product.sellerId
+  const totalSpent = user.orders
+    .filter((o) => o.status === "COMPLETED")
+    .reduce((sum, o) => sum + o.totalPrice, 0)
 
-  const liveGoldPrice = 20000000
-  const rawPrice = product.weight * liveGoldPrice
-  const profit = (rawPrice + product.wage) * (product.profitPercent / 100)
-  const tax = (rawPrice + product.wage + profit) * 0.09
+  const activeOrders = user.orders.filter(
+    (o) => o.status !== "CANCELLED" && o.status !== "COMPLETED"
+  ).length
 
-  const priceBreakdown = {
-    rawPrice: Math.round(rawPrice),
-    wage: product.wage,
-    profit: Math.round(profit),
-    tax: Math.round(tax),
-    finalPrice: product.finalPrice,
-  }
+  const stats = [
+    { title: "موجودی کیف پول", value: `${formatCurrency(user.walletBalance)} تومان`, icon: Wallet, color: "text-green-600", bg: "bg-green-50" },
+    { title: "کل خریدها", value: `${formatCurrency(totalSpent)} تومان`, icon: ShoppingBag, color: "text-blue-600", bg: "bg-blue-50" },
+    { title: "سفارشات فعال", value: `${activeOrders} عدد`, icon: Package, color: "text-orange-600", bg: "bg-orange-50" },
+  ]
 
-  // images را به آرایه تبدیل کنید
-  const images: string[] = typeof product.images === "string" ? JSON.parse(product.images) : product.images
+  const quickLinks = [
+    { href: "/market", label: "🛒 بازار طلا", bg: "bg-yellow-50 hover:bg-yellow-100" },
+    { href: "/wallet", label: "💰 کیف پول", bg: "bg-green-50 hover:bg-green-100" },
+    { href: "/analysis", label: "📈 تحلیل بازار", bg: "bg-blue-50 hover:bg-blue-100" },
+    { href: "/favorites", label: "❤️ علاقه‌مندی‌ها", bg: "bg-red-50 hover:bg-red-100" },
+    { href: "/subscription", label: "👑 اشتراک ویژه", bg: "bg-purple-50 hover:bg-purple-100" },
+    { href: "/become-seller", label: "🏪 ثبت طلافروشی", bg: "bg-amber-50 hover:bg-amber-100" },
+  ]
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <ProductImages images={images} name={product.name} />
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">👋 سلام، {user.name || "کاربر"}</h1>
+        <p className="text-gray-600 mt-2">به داشبورد خریدار خوش آمدید</p>
+      </div>
 
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Badge className="bg-yellow-500">{TYPE_LABEL[product.type]}</Badge>
-              {product.isVerified && (
-                <Badge className="bg-emerald-500">✓ تأیید کارشناس</Badge>
-              )}
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-            {product.description && (
-              <p className="text-gray-600 mt-2">{product.description}</p>
-            )}
-          </div>
-
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-full">
-                  <User className="h-5 w-5 text-gray-600" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {stats.map((stat, index) => (
+          <Card key={index} className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="font-medium">{product.seller.name || "فروشنده"}</p>
-                  <p className="text-sm text-gray-500">
-                    {product.seller._count.products} محصول فعال
-                  </p>
+                  <p className="text-sm text-gray-500">{stat.title}</p>
+                  <p className="text-xl font-bold">{stat.value}</p>
                 </div>
-                {product.isVerified && (
-                  <Shield className="h-5 w-5 text-emerald-500 mr-auto" />
-                )}
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
 
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">مشخصات محصول</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center py-2">
-                <div className="flex items-center gap-2">
-                  <Weight className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">وزن</span>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        {quickLinks.map((link, index) => (
+          <Link key={index} href={link.href} className={`block p-4 rounded-xl ${link.bg} transition-colors text-center font-medium text-sm`}>
+            {link.label}
+          </Link>
+        ))}
+      </div>
+
+      <Card className="border-0 shadow-md">
+        <div className="p-6">
+          <h2 className="text-lg font-bold mb-4">سفارشات اخیر</h2>
+          {user.orders.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">هنوز سفارشی ثبت نکرده‌اید</p>
+              <Link href="/market"><Button className="bg-yellow-500 hover:bg-yellow-600">مشاهده بازار</Button></Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {user.orders.map((order) => (
+                <div key={order.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-medium">{order.product?.name || "محصول"}</p>
+                    <p className="text-sm text-gray-500">{new Intl.DateTimeFormat("fa-IR").format(order.createdAt)}</p>
+                  </div>
+                  <p className="font-bold text-yellow-600">{formatCurrency(order.totalPrice)} تومان</p>
                 </div>
-                <span className="font-bold">{product.weight} گرم</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center py-2">
-                <div className="flex items-center gap-2">
-                  <Gem className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">عیار</span>
-                </div>
-                <span className="font-bold">{product.karat}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">موجودی</span>
-                {product.stock > 0 ? (
-                  <span className="font-bold text-green-600">{product.stock} عدد</span>
-                ) : (
-                  <span className="font-bold text-red-600">ناموجود</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">جزئیات قیمت</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PriceBreakdownDisplay breakdown={priceBreakdown} />
-            </CardContent>
-          </Card>
-
-          {!isSeller && product.stock > 0 && (
-            <PurchaseForm productId={product.id} finalPrice={product.finalPrice} maxQuantity={product.stock} />
-          )}
-
-          {isSeller && (
-            <Card className="border-2 border-yellow-200 bg-yellow-50">
-              <CardContent className="p-4 text-center">
-                <p className="text-yellow-700">این محصول متعلق به شماست</p>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

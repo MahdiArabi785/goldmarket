@@ -1,4 +1,3 @@
-// src/app/(auth)/login/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -54,7 +53,7 @@ export default function LoginPage() {
       const result = await loginWithPassword(data.username, data.password)
       if (result.success) {
         if (result.isRoot) {
-          // Direct login for root admin
+          // ورود مستقیم ادمین
           const res = await signIn("credentials", {
             username: data.username,
             password: data.password,
@@ -95,7 +94,7 @@ export default function LoginPage() {
         toast.error("کد تأیید اشتباه یا منقضی شده است")
       } else {
         toast.success("خوش آمدید! 🎉")
-        router.push("/market")
+        router.push("/dashboard")
         router.refresh()
       }
     } catch {

@@ -6,80 +6,54 @@ export default async function proxy(req: NextRequest) {
   const session = await auth()
   const path = req.nextUrl.pathname
 
-  // مسیرهای عمومی (نیاز به احراز هویت ندارند)
-  const publicPaths = [
-  "/",
-  "/market",
-  "/login",
-  "/register",
-  "/analysis",
-  "/favorites",
-  "/subscription",
-  "/become-seller",
-  "/api/auth",
-  "/api/gold-price",
-]
-
-  // بررسی مسیرهای عمومی
-  const isPublicPath = publicPaths.some(
-    (p) => path === p || path.startsWith(p + "/") || path.startsWith("/api/auth")
-  )
-
-  if (isPublicPath) {
+  // مسیرهای عمومی (بدون نیاز به ورود)
+  const publicPaths = ["/", "/market", "/login", "/register", "/analysis"]
+  if (publicPaths.some((p) => path === p) || path.startsWith("/api/auth") || path.startsWith("/api/gold-price")) {
     return NextResponse.next()
   }
 
-  // اگر کاربر وارد نشده باشد، هدایت به صفحه ورود
+  // اگر کاربر وارد نشده باشد
   if (!session?.user) {
-    const loginUrl = new URL("/login", req.url)
-    loginUrl.searchParams.set("callbackUrl", path)
-    return NextResponse.redirect(loginUrl)
+    return NextResponse.redirect(new URL("/login", req.url))
   }
 
   const role = (session.user as any).role
 
-  // محافظت از مسیرهای فروشنده
-  if (path.startsWith("/dashboard/seller")) {
-    if (role !== "SELLER" && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard/buyer", req.url))
-    }
-  }
-
-  // محافظت از مسیرهای کارشناس
-  if (path.startsWith("/dashboard/expert")) {
-    if (role !== "EXPERT" && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard/buyer", req.url))
-    }
-  }
-
-  // محافظت از مسیرهای ادمین
-  if (path.startsWith("/admin")) {
-    if (role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard/buyer", req.url))
-    }
-  }
-
-  // اگر کاربر وارد شده و به داشبورد خودش می‌رود
+  // صفحه میانی داشبورد - این صفحه خودش بر اساس نقش redirect می‌کند
   if (path === "/dashboard") {
-    switch (role) {
-      case "SELLER":
-        return NextResponse.redirect(new URL("/dashboard/seller", req.url))
-      case "EXPERT":
-        return NextResponse.redirect(new URL("/dashboard/expert", req.url))
-      default:
-        return NextResponse.redirect(new URL("/dashboard/buyer", req.url))
-    }
+    return NextResponse.next()
+  }
+
+  // نقشه دسترسی مسیرها بر اساس نقش
+  const roleRoutes: Record<string, string[]> = {
+    BUYER: ["/dashboard/buyer", "/wallet", "/favorites", "/subscription", "/become-seller"],
+    SELLER: ["/dashboard/seller"],
+    EXPERT: ["/dashboard/expert"],
+    ADMIN: ["/dashboard/admin"],
+  }
+
+  const allowedPaths = roleRoutes[role] || []
+
+  // اگر مسیر درخواستی با هیچ‌کدام از مسیرهای مجاز شروع نشود
+  const isAllowed = allowedPaths.some((route) => path.startsWith(route))
+
+  if (!isAllowed) {
+    // کاربر را به /dashboard هدایت کن تا صفحه میانی مسیر درست را تشخیص دهد
+    return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
   return NextResponse.next()
 }
 
-// مسیرهایی که proxy روی آن‌ها اعمال می‌شود
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/wallet/:path*",
-    "/admin/:path*",
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public|uploads).*)",
   ],
 }

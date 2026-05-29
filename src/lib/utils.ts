@@ -1,3 +1,4 @@
+// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -21,4 +22,23 @@ export function formatDate(date: Date | string): string {
 
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+/**
+ * تبدیل امن فیلد images از JSON String به آرایه رشته‌ها
+ * در صورت بروز هرگونه خطا، آرایه‌ای حاوی placeholder.svg بازمی‌گرداند
+ */
+
+export function parseImagesSafe(imagesRaw: any): string[] {
+  try {
+    if (typeof imagesRaw === 'string') {
+      const parsed = JSON.parse(imagesRaw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    } else if (Array.isArray(imagesRaw)) {
+      return imagesRaw.length > 0 ? imagesRaw : ["/placeholder.svg"]
+    }
+  } catch {
+    // nothing
+  }
+  return ["/placeholder.svg"]
 }

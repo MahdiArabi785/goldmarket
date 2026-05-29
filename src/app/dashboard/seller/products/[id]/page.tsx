@@ -15,15 +15,28 @@ export default async function SellerEditProductPage({
   const product = await prisma.product.findUnique({ where: { id } })
 
   if (!product || product.sellerId !== (session.user as any).id) {
-    return <div className="p-8 text-center text-gray-500">محصول یافت نشد یا شما مجاز به ویرایش نیستید</div>
+    return (
+      <div className="p-8 text-center text-gray-500">
+        محصول یافت نشد یا شما مجاز به ویرایش نیستید
+      </div>
+    )
   }
 
-  // images را پارس کرده و به فرم ارسال می‌کنیم
+  // تبدیل images به آرایه
+  const images: string[] = JSON.parse(product.images)
+
   const plainProduct = {
-    ...product,
-    images: JSON.parse(product.images),
-    createdAt: product.createdAt.toISOString(),
-    updatedAt: product.updatedAt.toISOString(),
+    id: product.id,
+    name: product.name,
+    type: product.type,
+    weight: product.weight,
+    karat: product.karat,
+    wage: product.wage,
+    profitPercent: product.profitPercent,
+    stock: product.stock,
+    description: product.description || "",
+    barcode: product.barcode || "",
+    images,
   }
 
   return (

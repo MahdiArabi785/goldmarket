@@ -19,7 +19,7 @@ export default async function proxy(req: NextRequest) {
 
   const role = (session.user as any).role
 
-  // صفحه میانی داشبورد - این صفحه خودش بر اساس نقش redirect می‌کند
+  // صفحه میانی داشبورد – همیشه مجاز است
   if (path === "/dashboard") {
     return NextResponse.next()
   }
@@ -33,8 +33,6 @@ export default async function proxy(req: NextRequest) {
   }
 
   const allowedPaths = roleRoutes[role] || []
-
-  // اگر مسیر درخواستی با هیچ‌کدام از مسیرهای مجاز شروع نشود
   const isAllowed = allowedPaths.some((route) => path.startsWith(route))
 
   if (!isAllowed) {
@@ -47,13 +45,6 @@ export default async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|favicon.ico|public|uploads).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|uploads|api/upload).*)",
   ],
 }

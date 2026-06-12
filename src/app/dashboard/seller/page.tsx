@@ -2,10 +2,14 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { prisma } from "@/lib/prisma"
 import { formatCurrency, parseImagesSafe } from "@/lib/utils"
-import { Plus, Package, DollarSign, TrendingUp } from "lucide-react"
+import { Plus, Package, DollarSign, TrendingUp, AlertTriangle, BarChart3, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
+import { SecurityTimer } from "@/components/seller/security-timer"
+import { AntiTheftSensor } from "@/components/seller/anti-theft-sensor"
+import { LowStockAlert } from "@/components/seller/low-stock-alert"
 
 export default async function SellerDashboard() {
   const session = await auth()
@@ -31,6 +35,7 @@ export default async function SellerDashboard() {
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalPrice, 0)
   const activeProducts = products.filter((p) => p.stock > 0).length
+  const lowStockCount = products.filter((p) => p.stock <= 3 && p.stock > 0).length
 
   const stats = [
     {
@@ -54,7 +59,19 @@ export default async function SellerDashboard() {
       color: "text-orange-600",
       bg: "bg-orange-50",
     },
+    {
+      title: "موجودی کم",
+      value: `${lowStockCount} محصول`,
+      icon: AlertTriangle,
+      color: "text-red-600",
+      bg: "bg-red-50",
+    },
   ]
+
+  // محاسبه سود و زیان موجودی
+  const inventoryValue = products.reduce((sum, p) => sum + p.finalPrice * p.stock, 0)
+  const totalCost = products.reduce((sum, p) => sum + (p.finalPrice / (1 + p.profitPercent / 100)) * p.stock, 0)
+  const estimatedProfit = inventoryValue - totalCost
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -63,15 +80,29 @@ export default async function SellerDashboard() {
           <h1 className="text-3xl font-bold">🏪 فروشگاه {user?.name || "شما"}</h1>
           <p className="text-gray-600 mt-2">داشبورد مدیریت فروشگاه</p>
         </div>
-        <Link href="/dashboard/seller/products/new">
-          <Button className="gap-2 bg-yellow-500 hover:bg-yellow-600">
-            <Plus className="h-4 w-4" />
-            محصول جدید
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <a href="/api/reports/sales" target="_blank">
+            <Button variant="outline" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              گزارش اکسل
+            </Button>
+          </a>
+          <Link href="/dashboard/seller/barcode">
+            <Button variant="outline" className="gap-2">
+              📷 بارکدخوان
+            </Button>
+          </Link>
+          <Link href="/dashboard/seller/products/new">
+            <Button className="gap-2 bg-yellow-500 hover:bg-yellow-600">
+              <Plus className="h-4 w-4" />
+              محصول جدید
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* کارت‌های آمار */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
             <CardContent className="p-6">
@@ -89,6 +120,33 @@ export default async function SellerDashboard() {
         ))}
       </div>
 
+      {/* ویجت‌های امنیتی و موجودی */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <SecurityTimer />
+        <AntiTheftSensor />
+      </div>
+
+      <div className="mb-8">
+        <LowStockAlert />
+      </div>
+
+      {/* خلاصه مالی */}
+      <Card className="border-0 shadow-md mb-8 bg-gradient-to-r from-green-50 to-emerald-50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">ارزش کل موجودی</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(inventoryValue)} تومان</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">سود تخمینی موجودی</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(estimatedProfit)} تومان</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* محصولات */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>محصولات شما</CardTitle>
@@ -108,14 +166,31 @@ export default async function SellerDashboard() {
             <div className="space-y-4">
               {products.map((product) => {
                 const images = parseImagesSafe(product.images)
+                const isLowStock = product.stock <= 3
                 return (
-                  <div key={product.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div
+                    key={product.id}
+                    className={`flex justify-between items-center p-4 rounded-xl transition-colors ${
+                      isLowStock ? "bg-amber-50 border border-amber-200" : "bg-gray-50"
+                    }`}
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                        <img src={images[0]} alt="" className="w-full h-full object-cover"/>
+                        <img
+                          src={images[0]}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div>
-                        <p className="font-medium">{product.name}</p>
+                        <p className="font-medium flex items-center gap-2">
+                          {product.name}
+                          {isLowStock && (
+                            <Badge className="bg-red-500 text-white text-xs">
+                              {product.stock === 0 ? "ناموجود" : "موجودی کم"}
+                            </Badge>
+                          )}
+                        </p>
                         <p className="text-sm text-gray-500">
                           موجودی: {product.stock} | {product.weight} گرم
                         </p>
@@ -123,10 +198,14 @@ export default async function SellerDashboard() {
                     </div>
                     <div className="text-left flex items-center gap-4">
                       <div>
-                        <p className="font-bold text-yellow-600">{formatCurrency(product.finalPrice)} تومان</p>
+                        <p className="font-bold text-yellow-600">
+                          {formatCurrency(product.finalPrice)} تومان
+                        </p>
                       </div>
                       <Link href={`/dashboard/seller/products/${product.id}`}>
-                        <Button variant="outline" size="sm">ویرایش</Button>
+                        <Button variant="outline" size="sm">
+                          ویرایش
+                        </Button>
                       </Link>
                     </div>
                   </div>

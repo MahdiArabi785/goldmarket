@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { getBuyerOrders } from "@/server/order-actions"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { CancelOrderButton } from "@/components/cancel-order-button"
+import { FileText, ShoppingBag } from "lucide-react"
 import Link from "next/link"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -30,7 +31,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default async function OrdersPage() {
   const session = await auth()
-  if (!session?.user) redirect("/auth/login")
+  if (!session?.user) redirect("/login")
 
   const orders = await getBuyerOrders()
 
@@ -44,7 +45,7 @@ export default async function OrdersPage() {
       {orders.length === 0 ? (
         <Card className="border-0 shadow-md">
           <CardContent className="p-12 text-center">
-            <p className="text-5xl mb-4">🛒</p>
+            <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" />
             <p className="text-xl text-gray-500 mb-4">هنوز سفارشی ثبت نکرده‌اید</p>
             <Link href="/market">
               <Button className="bg-yellow-500 hover:bg-yellow-600">مشاهده بازار</Button>
@@ -57,12 +58,13 @@ export default async function OrdersPage() {
             <Card key={order.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
+                  {/* اطلاعات محصول */}
                   <div className="flex-1">
                     <div className="flex items-start gap-4">
                       <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
                         {order.product.images?.[0] ? (
                           <img
-                            src={order.product.images[0]}
+                            src={typeof order.product.images === "string" ? JSON.parse(order.product.images)[0] : order.product.images[0]}
                             alt={order.product.name}
                             className="w-full h-full object-cover rounded-xl"
                           />
@@ -70,7 +72,7 @@ export default async function OrdersPage() {
                           <span className="text-2xl">🪙</span>
                         )}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-bold text-lg">{order.product.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge className={STATUS_COLOR[order.status]}>
@@ -91,6 +93,7 @@ export default async function OrdersPage() {
                     </div>
                   </div>
 
+                  {/* قیمت و اقدامات */}
                   <div className="flex flex-col items-end justify-between gap-2">
                     <div className="text-left">
                       <p className="text-sm text-gray-500">مبلغ پرداختی</p>
@@ -99,10 +102,21 @@ export default async function OrdersPage() {
                       </p>
                       <p className="text-sm text-gray-500">تومان</p>
                     </div>
-                    
-                    {(order.status === "PENDING" || order.status === "COMPLETED") && (
-                      <CancelOrderButton orderId={order.id} />
-                    )}
+
+                    <div className="flex gap-2">
+                      {/* دکمه فاکتور */}
+                      <Link href={`/api/invoice/${order.id}`} target="_blank">
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <FileText className="h-4 w-4" />
+                          فاکتور
+                        </Button>
+                      </Link>
+
+                      {/* دکمه لغو سفارش */}
+                      {(order.status === "PENDING" || order.status === "COMPLETED") && (
+                        <CancelOrderButton orderId={order.id} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>

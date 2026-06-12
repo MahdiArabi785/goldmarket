@@ -26,21 +26,22 @@ export async function createProduct(formData: FormData) {
   if (!user || user.role !== "SELLER") throw new Error("فقط فروشندگان می‌توانند محصول ثبت کنند")
 
   const name = formData.get("name") as string
-  const type = formData.get("type") as ProductType
+  if (!name) throw new Error("نام محصول الزامی است")
+
+  const type = (formData.get("type") as ProductType) || "NEW"
   const weight = parseFloat(formData.get("weight") as string)
+  if (!weight) throw new Error("وزن محصول الزامی است")
+
   const karat = parseInt(formData.get("karat") as string) || 18
   const wage = parseFloat(formData.get("wage") as string) || 0
   const profitPercent = parseFloat(formData.get("profitPercent") as string) || 7
   const stock = parseInt(formData.get("stock") as string) || 1
-  const description = formData.get("description") as string || ""
-  const barcode = formData.get("barcode") as string || ""
+  const description = (formData.get("description") as string) || ""
+  const barcode = (formData.get("barcode") as string) || ""
 
-  const imageUrlsRaw = formData.get("imageUrls") as string || "[]"
-  let imageUrls: string[] = parseImagesSafe(imageUrlsRaw)
-  // اگر کاربر هیچ تصویری وارد نکرده بود، تصویر پیش‌فرض را بگذاریم
-  if (imageUrls.length === 1 && imageUrls[0] === "/placeholder.svg" && imageUrlsRaw.trim() === "") {
-    imageUrls = ["/placeholder.svg"]
-  }
+  const imageUrlsRaw = (formData.get("imageUrls") as string) || "[]"
+  const imageUrls = parseImagesSafe(imageUrlsRaw)
+  const finalImages = imageUrls.length > 0 && imageUrls[0] !== "/placeholder.svg" ? imageUrls : ["/placeholder.svg"]
 
   const liveGoldPrice = await getLiveGoldPrice()
   const priceBreakdown = calculateGoldPrice(weight, liveGoldPrice, wage, profitPercent)
@@ -58,7 +59,7 @@ export async function createProduct(formData: FormData) {
       stock,
       description,
       barcode,
-      images: JSON.stringify(imageUrls),
+      images: JSON.stringify(finalImages),
     },
   })
 
@@ -76,19 +77,35 @@ export async function updateProduct(productId: string, formData: FormData) {
     throw new Error("شما مجاز به ویرایش این محصول نیستید")
   }
 
-  const liveGoldPrice = await getLiveGoldPrice()
+  // خواندن مقادیر جدید (در صورت ارسال)، در غیر این صورت از مقادیر قبلی استفاده کن
+  const name = (formData.get("name") as string) || product.name
+  const weight = formData.get("weight") ? parseFloat(formData.get("weight") as string) : product.weight
+  const karat = formData.get("karat") ? parseInt(formData.get("karat") as string) : product.karat
   const wage = formData.get("wage") ? parseFloat(formData.get("wage") as string) : product.wage
-  const profitPercent = formData.get("profitPercent") ? parseFloat(formData.get("profitPercent") as string) : product.profitPercent
-  const priceBreakdown = calculateGoldPrice(product.weight, liveGoldPrice, wage, profitPercent)
+  const profitPercent = formData.get("profitPercent")
+    ? parseFloat(formData.get("profitPercent") as string)
+    : product.profitPercent
+  const stock = formData.get("stock") ? parseInt(formData.get("stock") as string) : product.stock
+  const description = (formData.get("description") as string) ?? product.description
+  const barcode = (formData.get("barcode") as string) ?? product.barcode
+
+  // محاسبه قیمت نهایی با وزن و اجرت جدید
+  const liveGoldPrice = await getLiveGoldPrice()
+  const priceBreakdown = calculateGoldPrice(weight, liveGoldPrice, wage, profitPercent)
 
   const updateData: any = {
+    name,
+    weight,
+    karat,
     wage,
     profitPercent,
     finalPrice: priceBreakdown.finalPrice,
-    stock: formData.get("stock") ? parseInt(formData.get("stock") as string) : product.stock,
-    description: formData.get("description") as string ?? product.description,
+    stock,
+    description,
+    barcode,
   }
 
+  // به‌روزرسانی تصاویر در صورت ارسال
   const imageUrlsRaw = formData.get("imageUrls") as string | null
   if (imageUrlsRaw !== null) {
     const imageUrls = parseImagesSafe(imageUrlsRaw)

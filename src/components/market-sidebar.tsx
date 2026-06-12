@@ -13,6 +13,7 @@ import {
   Store,
   User,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react"
 
 interface MarketSidebarProps {
@@ -84,7 +85,13 @@ export function MarketSidebar({ user }: MarketSidebarProps) {
       href: "/become-seller",
       icon: Store,
       label: "ثبت طلافروشی",
-      visible: user.role === "BUYER", // فقط خریداران می‌توانند درخواست فروشندگی دهند
+      visible: user.role === "BUYER",
+    },
+    {
+      href: "/dashboard/buyer/report-stolen",
+      icon: AlertTriangle,
+      label: "گزارش طلای سرقتی",
+      visible: user.role === "BUYER",
     },
   ]
 

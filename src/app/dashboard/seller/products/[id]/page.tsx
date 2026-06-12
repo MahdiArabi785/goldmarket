@@ -1,6 +1,8 @@
+// src/app/(dashboard)/seller/products/[id]/page.tsx
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { parseImagesSafe } from "@/lib/utils"
 import { EditProductForm } from "@/components/seller/edit-product-form"
 
 export default async function SellerEditProductPage({
@@ -22,8 +24,8 @@ export default async function SellerEditProductPage({
     )
   }
 
-  // تبدیل images به آرایه
-  const images: string[] = JSON.parse(product.images)
+  // استفاده از تابع امن برای دریافت آرایه‌ی تصاویر
+  const images = parseImagesSafe(product.images)
 
   const plainProduct = {
     id: product.id,

@@ -3,7 +3,39 @@
 import { prisma } from "@/lib/prisma"
 import { AnalysisSignal } from "@/types"
 
+// محاسبه میانگین متحرک ساده
+function calculateSMA(prices: number[], period: number): number[] {
+  const sma: number[] = []
+  for (let i = period - 1; i < prices.length; i++) {
+    const sum = prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0)
+    sma.push(sum / period)
+  }
+  return sma
+}
+
+// محاسبه شاخص قدرت نسبی
+function calculateRSI(prices: number[], period: number): number {
+  if (prices.length < period + 1) return 50
+
+  let gains = 0
+  let losses = 0
+
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const change = prices[i] - prices[i - 1]
+    if (change >= 0) gains += change
+    else losses -= change
+  }
+
+  const avgGain = gains / period
+  const avgLoss = losses / period
+
+  if (avgLoss === 0) return 100
+  const rs = avgGain / avgLoss
+  return 100 - 100 / (1 + rs)
+}
+
 export async function getTechnicalAnalysis(): Promise<AnalysisSignal> {
+  // ۱. دریافت قیمت‌های ۳۰ روز اخیر
   const prices = await prisma.priceHistory.findMany({
     orderBy: { createdAt: "desc" },
     take: 30,
@@ -21,11 +53,9 @@ export async function getTechnicalAnalysis(): Promise<AnalysisSignal> {
 
   const priceValues = prices.map((p) => p.price).reverse()
 
-  // محاسبه میانگین متحرک ۵ روزه و ۲۰ روزه
+  // ۲. محاسبه اندیکاتورهای تکنیکال
   const ma5 = calculateSMA(priceValues, 5)
   const ma20 = calculateSMA(priceValues, 20)
-  
-  // محاسبه RSI
   const rsi = calculateRSI(priceValues, 14)
 
   let type: "BUY" | "SELL" | "HOLD" = "HOLD"
@@ -80,40 +110,31 @@ export async function getTechnicalAnalysis(): Promise<AnalysisSignal> {
     reason = "بازار در حالت رنج و بدون روند مشخص - توصیه به انتظار"
   }
 
+  // ۳. تحلیل بنیادی (اخبار)
+  let fundamentalScore = 50 // پیش‌فرض
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const news = await prisma.newsItem.findMany({
+      where: { publishedAt: { gte: sevenDaysAgo } },
+    })
+
+    if (news.length > 0) {
+      const avgSentiment = news.reduce((sum, n) => sum + n.sentiment, 0) / news.length
+      // تبدیل -1..1 به 0..100
+      fundamentalScore = Math.round((avgSentiment + 1) * 50)
+    }
+  } catch (error) {
+    console.error("خطا در دریافت اخبار:", error)
+  }
+
+  // ۴. ترکیب نهایی
+  const technicalScore = Math.round((strength + 50) / 2)
+
   return {
     type,
     strength,
     reason,
-    technicalScore: Math.round((strength + 50) / 2),
-    fundamentalScore: 50,
+    technicalScore,
+    fundamentalScore,
   }
-}
-
-function calculateSMA(prices: number[], period: number): number[] {
-  const sma: number[] = []
-  for (let i = period - 1; i < prices.length; i++) {
-    const sum = prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0)
-    sma.push(sum / period)
-  }
-  return sma
-}
-
-function calculateRSI(prices: number[], period: number): number {
-  if (prices.length < period + 1) return 50
-
-  let gains = 0
-  let losses = 0
-
-  for (let i = prices.length - period; i < prices.length; i++) {
-    const change = prices[i] - prices[i - 1]
-    if (change >= 0) gains += change
-    else losses -= change
-  }
-
-  const avgGain = gains / period
-  const avgLoss = losses / period
-
-  if (avgLoss === 0) return 100
-  const rs = avgGain / avgLoss
-  return 100 - 100 / (1 + rs)
 }

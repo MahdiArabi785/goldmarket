@@ -4,8 +4,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/prisma"
 import { formatCurrency } from "@/lib/utils"
-import { Wallet, ShoppingBag, Package } from "lucide-react"
+import { Wallet, ShoppingBag, Package, AlertTriangle } from "lucide-react"
 import Link from "next/link"
+import { LiveProfitLoss } from "@/components/live-profit-loss"
 
 export default async function BuyerDashboard() {
   const session = await auth()
@@ -35,9 +36,27 @@ export default async function BuyerDashboard() {
   ).length
 
   const stats = [
-    { title: "موجودی کیف پول", value: `${formatCurrency(user.walletBalance)} تومان`, icon: Wallet, color: "text-green-600", bg: "bg-green-50" },
-    { title: "کل خریدها", value: `${formatCurrency(totalSpent)} تومان`, icon: ShoppingBag, color: "text-blue-600", bg: "bg-blue-50" },
-    { title: "سفارشات فعال", value: `${activeOrders} عدد`, icon: Package, color: "text-orange-600", bg: "bg-orange-50" },
+    {
+      title: "موجودی کیف پول",
+      value: `${formatCurrency(user.walletBalance)} تومان`,
+      icon: Wallet,
+      color: "text-green-600",
+      bg: "bg-green-50",
+    },
+    {
+      title: "کل خریدها",
+      value: `${formatCurrency(totalSpent)} تومان`,
+      icon: ShoppingBag,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      title: "سفارشات فعال",
+      value: `${activeOrders} عدد`,
+      icon: Package,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+    },
   ]
 
   const quickLinks = [
@@ -47,6 +66,7 @@ export default async function BuyerDashboard() {
     { href: "/favorites", label: "❤️ علاقه‌مندی‌ها", bg: "bg-red-50 hover:bg-red-100" },
     { href: "/subscription", label: "👑 اشتراک ویژه", bg: "bg-purple-50 hover:bg-purple-100" },
     { href: "/become-seller", label: "🏪 ثبت طلافروشی", bg: "bg-amber-50 hover:bg-amber-100" },
+    { href: "/dashboard/buyer/report-stolen", label: "🚨 گزارش طلای سرقتی", bg: "bg-red-100 hover:bg-red-200" },
   ]
 
   return (
@@ -56,6 +76,12 @@ export default async function BuyerDashboard() {
         <p className="text-gray-600 mt-2">به داشبورد خریدار خوش آمدید</p>
       </div>
 
+      {/* کارت سود و زیان لحظه‌ای */}
+      <div className="mb-8">
+        <LiveProfitLoss userId={userId} />
+      </div>
+
+      {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
@@ -74,21 +100,29 @@ export default async function BuyerDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      {/* لینک‌های سریع */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {quickLinks.map((link, index) => (
-          <Link key={index} href={link.href} className={`block p-4 rounded-xl ${link.bg} transition-colors text-center font-medium text-sm`}>
+          <Link
+            key={index}
+            href={link.href}
+            className={`block p-4 rounded-xl ${link.bg} transition-colors text-center font-medium text-sm`}
+          >
             {link.label}
           </Link>
         ))}
       </div>
 
+      {/* سفارشات اخیر */}
       <Card className="border-0 shadow-md">
         <div className="p-6">
           <h2 className="text-lg font-bold mb-4">سفارشات اخیر</h2>
           {user.orders.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">هنوز سفارشی ثبت نکرده‌اید</p>
-              <Link href="/market"><Button className="bg-yellow-500 hover:bg-yellow-600">مشاهده بازار</Button></Link>
+              <Link href="/market">
+                <Button className="bg-yellow-500 hover:bg-yellow-600">مشاهده بازار</Button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">
@@ -96,9 +130,15 @@ export default async function BuyerDashboard() {
                 <div key={order.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                   <div>
                     <p className="font-medium">{order.product?.name || "محصول"}</p>
-                    <p className="text-sm text-gray-500">{new Intl.DateTimeFormat("fa-IR").format(order.createdAt)}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Intl.DateTimeFormat("fa-IR").format(order.createdAt)}
+                    </p>
                   </div>
-                  <p className="font-bold text-yellow-600">{formatCurrency(order.totalPrice)} تومان</p>
+                  <div className="text-left">
+                    <p className="font-bold text-yellow-600">
+                      {formatCurrency(order.totalPrice)} تومان
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

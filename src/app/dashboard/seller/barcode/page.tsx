@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { BarcodeScanner } from "@/components/barcode-scanner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BarcodeScanner } from "@/components/barcode-scanner"
+import { toast } from "sonner"
 import { Search } from "lucide-react"
 
 export default function BarcodePage() {
@@ -15,24 +16,24 @@ export default function BarcodePage() {
   const router = useRouter()
 
   const handleBarcodeFound = (barcode: string) => {
-    // هدایت به صفحه افزودن محصول با بارکد
-    router.push(`/dashboard/seller/products/new?barcode=${barcode}`)
+    // هدایت به صفحه نتیجه با پارامتر barcode
+    router.push(`/dashboard/seller/barcode/result?code=${encodeURIComponent(barcode)}`)
   }
 
   const handleManualSearch = () => {
     if (manualBarcode.trim()) {
-      router.push(`/dashboard/seller/products/new?barcode=${manualBarcode}`)
+      router.push(`/dashboard/seller/barcode/result?code=${encodeURIComponent(manualBarcode.trim())}`)
     }
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">📷 بارکدخوان</h1>
-        <p className="text-gray-600 mt-2">بارکد محصول را اسکن کنید یا به صورت دستی وارد نمایید</p>
+        <h1 className="text-3xl font-bold">📷 سیستم بارکد</h1>
+        <p className="text-gray-600 mt-2">بارکد محصول را اسکن کنید یا دستی وارد کنید تا اطلاعات کامل آن نمایش داده شود</p>
       </div>
 
-      <Tabs defaultValue="scanner" className="mb-6">
+      <Tabs defaultValue="scanner">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="scanner">اسکن با دوربین</TabsTrigger>
           <TabsTrigger value="manual">ورود دستی</TabsTrigger>

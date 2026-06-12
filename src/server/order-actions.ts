@@ -20,6 +20,22 @@ export async function createOrder(productId: string, quantity: number = 1) {
     if (product.stock < quantity) throw new Error("موجودی کافی نیست")
     if (product.sellerId === buyerId) throw new Error("نمی‌توانید محصول خود را خریداری کنید")
 
+    // ========== بررسی طلای سرقتی ==========
+    const stolenReport = await tx.stolenGoldReport.findFirst({
+      where: {
+        OR: [
+          { reporterId: product.sellerId },
+        ],
+        status: {
+          in: ["PENDING", "INVESTIGATING"],
+        },
+      },
+    })
+    if (stolenReport) {
+      throw new Error("این محصول در لیست طلاهای سرقتی قرار دارد و امکان فروش آن وجود ندارد")
+    }
+    // =====================================
+
     const buyer = await tx.user.findUnique({ where: { id: buyerId } })
     if (!buyer) throw new Error("کاربر یافت نشد")
 
@@ -156,6 +172,7 @@ export async function getBuyerOrders() {
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const buyerId = (session.user as any).id
+
   return prisma.order.findMany({
     where: { buyerId },
     include: {
@@ -176,6 +193,7 @@ export async function getSellerOrders() {
   if (!session?.user?.id) throw new Error("لطفاً وارد شوید")
 
   const sellerId = (session.user as any).id
+
   return prisma.order.findMany({
     where: {
       product: { sellerId },

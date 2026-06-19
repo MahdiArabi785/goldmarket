@@ -1,3 +1,4 @@
+// src/app/analysis/page.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getTechnicalAnalysis } from "@/server/analysis-actions"
@@ -48,7 +49,6 @@ export default async function AnalysisPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* سیگنال اصلی */}
         <Card className={`border-0 shadow-md ${config.bg} lg:col-span-1`}>
           <CardContent className="p-8 text-center">
             <Icon className={`w-16 h-16 mx-auto mb-4 ${config.color}`} />
@@ -62,7 +62,6 @@ export default async function AnalysisPage() {
           </CardContent>
         </Card>
 
-        {/* نمودار قیمت */}
         <Card className="border-0 shadow-md lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -76,7 +75,6 @@ export default async function AnalysisPage() {
         </Card>
       </div>
 
-      {/* جزئیات تحلیل */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader>

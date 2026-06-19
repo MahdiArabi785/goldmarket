@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { prisma } from "@/lib/prisma"
 import { formatCurrency, parseImagesSafe } from "@/lib/utils"
-import { Plus, Package, DollarSign, TrendingUp, AlertTriangle, BarChart3, FileSpreadsheet } from "lucide-react"
+import { Plus, Package, DollarSign, TrendingUp, AlertTriangle, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
 import { SecurityTimer } from "@/components/seller/security-timer"
 import { AntiTheftSensor } from "@/components/seller/anti-theft-sensor"
 import { LowStockAlert } from "@/components/seller/low-stock-alert"
+import { SellerProfitLoss } from "@/components/seller/seller-profit-loss"
 
 export default async function SellerDashboard() {
   const session = await auth()
@@ -68,13 +69,9 @@ export default async function SellerDashboard() {
     },
   ]
 
-  // محاسبه سود و زیان موجودی
-  const inventoryValue = products.reduce((sum, p) => sum + p.finalPrice * p.stock, 0)
-  const totalCost = products.reduce((sum, p) => sum + (p.finalPrice / (1 + p.profitPercent / 100)) * p.stock, 0)
-  const estimatedProfit = inventoryValue - totalCost
-
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* هدر */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">🏪 فروشگاه {user?.name || "شما"}</h1>
@@ -120,33 +117,23 @@ export default async function SellerDashboard() {
         ))}
       </div>
 
-      {/* ویجت‌های امنیتی و موجودی */}
+      {/* ویجت‌های امنیتی */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <SecurityTimer />
         <AntiTheftSensor />
       </div>
 
+      {/* هشدار موجودی کم */}
       <div className="mb-8">
         <LowStockAlert />
       </div>
 
-      {/* خلاصه مالی */}
-      <Card className="border-0 shadow-md mb-8 bg-gradient-to-r from-green-50 to-emerald-50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">ارزش کل موجودی</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(inventoryValue)} تومان</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">سود تخمینی موجودی</p>
-              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(estimatedProfit)} تومان</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* سود و زیان لحظه‌ای */}
+      <div className="mb-8">
+        <SellerProfitLoss />
+      </div>
 
-      {/* محصولات */}
+      {/* لیست محصولات */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>محصولات شما</CardTitle>

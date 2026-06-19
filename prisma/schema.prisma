@@ -27,6 +27,7 @@ model User {
   expertRequests ExpertRequest[]
   walletTransactions WalletTransaction[]
   priceAlerts   PriceAlert[]
+  stolenReports StolenGoldReport[]
 }
 
 model Account {
@@ -77,7 +78,7 @@ model Product {
   stock         Int      @default(1)
   barcode       String?
   isVerified    Boolean  @default(false)
-  images        String   @default("[]")        // ذخیره به‌صورت JSON
+  images        String   @default("[]")
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -122,7 +123,7 @@ model ExpertRequest {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId   String?
   status      String   @default("PENDING")
-  images      String   @default("[]")        // ذخیره به‌صورت JSON
+  images      String   @default("[]")
   weight      Float?
   karat       Int?
   notes       String?
@@ -152,4 +153,15 @@ model NewsItem {
   sentiment   Float    @default(0)
   publishedAt DateTime
   createdAt   DateTime @default(now())
+}
+
+model StolenGoldReport {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  description String
+  images      String   @default("[]")
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

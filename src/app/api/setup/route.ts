@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 
 export async function GET() {
   try {
-    // بررسی اینکه آیا کاربر root از قبل وجود دارد
+    // بررسی وجود کاربر root
     const existing = await prisma.user.findUnique({
       where: { phone: "root" },
     })
@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ message: "✅ کاربر ادمین از قبل وجود دارد." })
     }
 
-    // ایجاد کاربر ادمین
+    // ساخت کاربر ادمین با رمز عبور هش‌شده
     const hashedPassword = await bcrypt.hash("toor", 10)
     await prisma.user.create({
       data: {
@@ -28,6 +28,7 @@ export async function GET() {
 
     return NextResponse.json({ message: "🎉 کاربر ادمین با موفقیت ساخته شد." })
   } catch (error) {
+    console.error(error)
     return NextResponse.json({ error: "خطا در ساخت کاربر ادمین." }, { status: 500 })
   }
 }

@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   // تنظیمات بهینه‌سازی تصاویر
   images: {
     remotePatterns: [
+      
       {
         protocol: "https",
         hostname: "picsum.photos",
@@ -19,6 +20,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "via.placeholder.com",
+      },
+      {
+         protocol: "https",
+         hostname: "res.cloudinary.com" 
       },
     ],
   },

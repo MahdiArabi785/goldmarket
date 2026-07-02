@@ -25,6 +25,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
     "exceljs": "^3.4.0",

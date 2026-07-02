@@ -22,12 +22,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-
-  // حذف experimental.instrumentationHook (در Next.js 16 خودکار فعال است)
-  webpack: (config) => {
-    config.externals = [...(config.externals || []), "@prisma/client"];
-    return config;
-  },
 };
 
 export default nextConfig;

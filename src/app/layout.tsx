@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { Providers } from "@/components/providers"
 import { Toaster } from "sonner"
 
-const inter = Inter({ subsets: ["latin"] })
+// const inter = Inter({ subsets: ["latin"], display: "swap", fallback: ["system-ui", "arial"] })
 
 export const metadata: Metadata = {
   title: "GoldMarket - بازار هوشمند طلا",

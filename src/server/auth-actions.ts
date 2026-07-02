@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma"
 import { generateOTP } from "@/lib/utils"
 import bcrypt from "bcryptjs"
+import { sendOTPEmail } from "@/lib/mailer"
 
 // ========================================
 // ثبت‌نام کاربر جدید (پشتیبانی از phone و email)
@@ -123,16 +124,24 @@ export async function loginWithPassword(username: string, password: string) {
       },
     })
 
-    // نمایش کد در کنسول (نسخه توسعه)
-    const method = user.phone ? `شماره ${user.phone}` : `ایمیل ${user.email}`
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-    console.log(`🔐 کد تأیید برای ${method}`)
-    console.log(`📱 کد: ${code}`)
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    // ارسال کد از طریق ایمیل (در صورت وجود ایمیل)، در غیر این صورت چاپ در کنسول
+    if (user.email) {
+      await sendOTPEmail({
+        to: user.email,
+        otp: code,
+        name: user.name || "کاربر",
+      })
+      console.log(`📧 ایمیل OTP به ${user.email} ارسال شد (کد: ${code})`)
+    } else {
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+      console.log(`🔐 کد تأیید برای ${identifier}`)
+      console.log(`📱 کد: ${code}`)
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    }
 
     return {
       success: true,
-      message: `کد تأیید به ${user.phone ? "شماره موبایل" : "ایمیل"} شما ارسال شد`,
+      message: `کد تأیید به ${user.email ? "ایمیل" : "شماره موبایل"} شما ارسال شد`,
       identifier,
     }
   } catch (error) {
@@ -161,7 +170,26 @@ export async function resendOTP(identifier: string) {
       },
     })
 
-    console.log(`🔐 Resent OTP for ${identifier}: ${code}`)
+    // پیدا کردن کاربر برای ارسال ایمیل
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: identifier },
+          { email: identifier },
+        ],
+      },
+    })
+
+    if (user?.email) {
+      await sendOTPEmail({
+        to: user.email,
+        otp: code,
+        name: user.name || "کاربر",
+      })
+      console.log(`📧 ایمیل مجدد OTP به ${user.email} ارسال شد (کد: ${code})`)
+    } else {
+      console.log(`🔐 Resent OTP for ${identifier}: ${code}`)
+    }
 
     return { success: true, message: "کد جدید ارسال شد" }
   } catch (error) {
@@ -171,7 +199,7 @@ export async function resendOTP(identifier: string) {
 }
 
 // ========================================
-// ارسال OTP ساده (برای ورود بدون رمز - اختیاری)
+// ارسال OTP ساده (ورود بدون رمز - اختیاری)
 // ========================================
 export async function sendOTP(phone: string) {
   try {

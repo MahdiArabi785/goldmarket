@@ -3,6 +3,15 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
+import { calculateGoldPrice } from "@/lib/price-calculator"
+
+// دریافت قیمت زنده طلا
+async function getLiveGoldPrice(): Promise<number> {
+  const lastPrice = await prisma.priceHistory.findFirst({
+    orderBy: { createdAt: "desc" },
+  })
+  return lastPrice?.price || 17866900
+}
 
 export async function createOrder(productId: string, quantity: number = 1) {
   const session = await auth()
@@ -20,28 +29,31 @@ export async function createOrder(productId: string, quantity: number = 1) {
     if (product.stock < quantity) throw new Error("موجودی کافی نیست")
     if (product.sellerId === buyerId) throw new Error("نمی‌توانید محصول خود را خریداری کنید")
 
-    // ========== بررسی طلای سرقتی ==========
+    // بررسی طلای سرقتی
     const stolenReport = await tx.stolenGoldReport.findFirst({
       where: {
-        OR: [
-          { reporterId: product.sellerId },
-        ],
-        status: {
-          in: ["PENDING", "INVESTIGATING"],
-        },
+        OR: [{ reporterId: product.sellerId }],
+        status: { in: ["PENDING", "INVESTIGATING"] },
       },
     })
-    if (stolenReport) {
-      throw new Error("این محصول در لیست طلاهای سرقتی قرار دارد و امکان فروش آن وجود ندارد")
-    }
-    // =====================================
+    if (stolenReport) throw new Error("این محصول در لیست طلاهای سرقتی قرار دارد و امکان فروش آن وجود ندارد")
+
+    // محاسبه قیمت نهایی با قیمت زنده طلا
+    const liveGoldPrice = await getLiveGoldPrice()
+    const breakdown = calculateGoldPrice(
+      product.weight,
+      liveGoldPrice,
+      product.wage,
+      product.profitPercent,
+      9
+    )
+    const totalPrice = breakdown.finalPrice * quantity
 
     const buyer = await tx.user.findUnique({ where: { id: buyerId } })
     if (!buyer) throw new Error("کاربر یافت نشد")
-
-    const totalPrice = product.finalPrice * quantity
     if (buyer.walletBalance < totalPrice) throw new Error("موجودی کیف پول کافی نیست")
 
+    // تراکنش‌های مالی
     await tx.user.update({
       where: { id: buyerId },
       data: { walletBalance: { decrement: totalPrice } },
@@ -70,11 +82,13 @@ export async function createOrder(productId: string, quantity: number = 1) {
       },
     })
 
+    // کاهش موجودی
     await tx.product.update({
       where: { id: productId },
       data: { stock: { decrement: quantity } },
     })
 
+    // ثبت سفارش با قیمت لحظه‌ای
     const order = await tx.order.create({
       data: {
         buyerId,
@@ -86,9 +100,7 @@ export async function createOrder(productId: string, quantity: number = 1) {
       include: {
         product: {
           include: {
-            seller: {
-              select: { name: true, phone: true },
-            },
+            seller: { select: { name: true, phone: true } },
           },
         },
       },
@@ -178,9 +190,7 @@ export async function getBuyerOrders() {
     include: {
       product: {
         include: {
-          seller: {
-            select: { name: true, phone: true },
-          },
+          seller: { select: { name: true, phone: true } },
         },
       },
     },
@@ -195,14 +205,10 @@ export async function getSellerOrders() {
   const sellerId = (session.user as any).id
 
   return prisma.order.findMany({
-    where: {
-      product: { sellerId },
-    },
+    where: { product: { sellerId } },
     include: {
       product: true,
-      buyer: {
-        select: { name: true, phone: true },
-      },
+      buyer: { select: { name: true, phone: true } },
     },
     orderBy: { createdAt: "desc" },
   })

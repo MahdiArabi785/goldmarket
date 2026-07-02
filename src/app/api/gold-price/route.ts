@@ -1,6 +1,50 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+// تلاش برای دریافت قیمت زنده از API ایرانی (tgju یا way2pay)
+async function tryFetchLivePrice() {
+  try {
+    console.log("📡 [API Route] تلاش با tgju...")
+    const res = await fetch("https://call1.tgju.org/ajax.json", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const geram18 = data?.current?.geram18
+      if (geram18?.p) {
+        const price = parseInt(geram18.p, 10)
+        await prisma.priceHistory.create({
+          data: { price, source: "tgju.org" },
+        })
+        console.log(`✅ [API] قیمت طلا (tgju): ${price.toLocaleString()} تومان`)
+        return price
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ [API] tgju در دسترس نیست.")
+  }
+
+  try {
+    console.log("📡 [API Route] تلاش با way2pay...")
+    const res = await fetch("https://api.way2pay.ir/gold/geram18")
+    if (res.ok) {
+      const data = await res.json()
+      const price = parseInt(data.price, 10)
+      if (price > 0) {
+        await prisma.priceHistory.create({
+          data: { price, source: "way2pay.ir" },
+        })
+        console.log(`✅ [API] قیمت طلا (way2pay): ${price.toLocaleString()} تومان`)
+        return price
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ [API] way2pay در دسترس نیست.")
+  }
+
+  return null // هیچ API در دسترس نبود
+}
+
 export async function GET() {
   try {
     // ابتدا آخرین قیمت از دیتابیس
@@ -8,61 +52,58 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     })
 
-    // اگر دیتابیس خالی بود، سعی می‌کنیم قیمت را دریافت کنیم
+    // اگر دیتابیس خالی بود (اولین بار)
     if (!lastPrice) {
-      try {
-        // تلاش با tgju
-        const res = await fetch("https://call.tgju.org/ajax.json", {
-          headers: { "User-Agent": "Mozilla/5.0" },
+      console.log("⚠️ دیتابیس خالی است. تلاش برای دریافت قیمت زنده...")
+      const livePrice = await tryFetchLivePrice()
+
+      if (livePrice) {
+        // اگر قیمت زنده دریافت شد، آن را برگردان
+        return NextResponse.json({
+          price: livePrice,
+          change: 0,
+          currency: "IRR",
+          updatedAt: new Date().toISOString(),
         })
-        const data = await res.json()
-        const geram18 = data?.current?.geram18
-        if (geram18 && geram18.p) {
-          const goldPriceIRR = parseInt(geram18.p, 10)
-          await prisma.priceHistory.create({
-            data: { price: goldPriceIRR, source: "tgju.org" },
-          })
-          lastPrice = { price: goldPriceIRR, createdAt: new Date() } as any
-        }
-      } catch (e) {
-        // در صورت خطا، fallback به روش دوم
-        try {
-          const usdRes = await fetch("https://api.exchangerate-api.com/v4/latest/USD")
-          const usdData = await usdRes.json()
-          const usdToIrr = usdData.rates.IRR || 50000
-
-          const goldRes = await fetch("https://api.exchangerate-api.com/v4/latest/XAU")
-          const goldData = await goldRes.json()
-          const goldPerOunceUSD = goldData.rates?.USD || 2000
-
-          const goldPerGramUSD = goldPerOunceUSD / 31.1035
-          const goldPriceIRR = Math.round(goldPerGramUSD * usdToIrr)
-
-          await prisma.priceHistory.create({
-            data: { price: goldPriceIRR, source: "exchangerate-api" },
-          })
-          lastPrice = { price: goldPriceIRR, createdAt: new Date() } as any
-        } catch (err) {
-          lastPrice = { price: 17866900, createdAt: new Date() } as any
-        }
+      } else {
+        // در غیر این صورت، قیمت پیش‌فرض را در دیتابیس ذخیره کن تا دفعات بعد استفاده شود
+        const defaultPrice = 17866900
+        console.warn("⚠️ قیمت زنده ممکن نیست. ذخیره قیمت پیش‌فرض.")
+        await prisma.priceHistory.create({
+          data: {
+            price: defaultPrice,
+            source: "default",
+          },
+        })
+        return NextResponse.json({
+          price: defaultPrice,
+          change: 0,
+          currency: "IRR",
+          updatedAt: new Date().toISOString(),
+        })
       }
     }
 
+    // اگر دیتابیس قیمت داشت، همان را با محاسبه تغییرات برمی‌گردانیم
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const yesterdayPrice = await prisma.priceHistory.findFirst({
-      where: { createdAt: { lte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      where: { createdAt: { lte: yesterday } },
       orderBy: { createdAt: "desc" },
     })
 
-    const price = lastPrice.price
-    const change = yesterdayPrice ? price - yesterdayPrice.price : 0
+    const change = yesterdayPrice ? lastPrice.price - yesterdayPrice.price : 0
 
     return NextResponse.json({
-      price,
+      price: lastPrice.price,
       change: Math.round(change),
       currency: "IRR",
-      updatedAt: lastPrice.createdAt,
+      updatedAt: lastPrice.createdAt.toISOString(),
     })
   } catch (error) {
-    return NextResponse.json({ price: 17866900, change: 0, currency: "IRR" }, { status: 200 })
+    console.error("❌ خطای gold-price route:", error)
+    return NextResponse.json(
+      { price: 17866900, change: 0, currency: "IRR" },
+      { status: 200 }
+    )
   }
 }

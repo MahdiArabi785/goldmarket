@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,29 +8,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  phone         String?   @unique
-  email         String?   @unique
-  password      String?
-  phoneVerified DateTime?
-  image         String?
-  role          String    @default("BUYER")
-  walletBalance Float     @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts      Account[]
-  sessions      Session[]
-  products      Product[]
-  orders        Order[]
-  expertRequests ExpertRequest[]
-  walletTransactions WalletTransaction[]
-  priceAlerts   PriceAlert[]
-  stolenReports StolenGoldReport[]
-}
-
+// ============================================
+// مدل‌های احراز هویت (NextAuth)
+// ============================================
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -64,6 +45,36 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ============================================
+// مدل اصلی کاربران
+// ============================================
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  phone         String?   @unique
+  email         String?   @unique
+  password      String?
+  phoneVerified DateTime?
+  image         String?
+  role          String    @default("BUYER")
+  walletBalance Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  products          Product[]
+  orders            Order[]
+  expertRequests    ExpertRequest[]
+  walletTransactions WalletTransaction[]
+  priceAlerts       PriceAlert[]
+  stolenReports     StolenGoldReport[]
+  sellerRequests    SellerRequest[]
+}
+
+// ============================================
+// مدل محصولات طلا
+// ============================================
 model Product {
   id            String   @id @default(cuid())
   sellerId      String
@@ -78,7 +89,7 @@ model Product {
   stock         Int      @default(1)
   barcode       String?
   isVerified    Boolean  @default(false)
-  images        String   @default("[]")
+  images        String   @default("[]")       // JSON array
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -86,6 +97,9 @@ model Product {
   orders        Order[]
 }
 
+// ============================================
+// مدل سفارشات
+// ============================================
 model Order {
   id         String   @id @default(cuid())
   buyerId    String
@@ -99,6 +113,9 @@ model Order {
   updatedAt  DateTime @updatedAt
 }
 
+// ============================================
+// مدل تاریخچه قیمت طلا
+// ============================================
 model PriceHistory {
   id        String   @id @default(cuid())
   price     Float
@@ -107,6 +124,9 @@ model PriceHistory {
   createdAt DateTime @default(now())
 }
 
+// ============================================
+// مدل تراکنش‌های کیف پول
+// ============================================
 model WalletTransaction {
   id          String   @id @default(cuid())
   userId      String
@@ -117,13 +137,16 @@ model WalletTransaction {
   createdAt   DateTime @default(now())
 }
 
+// ============================================
+// مدل درخواست‌های کارشناسی
+// ============================================
 model ExpertRequest {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId   String?
   status      String   @default("PENDING")
-  images      String   @default("[]")
+  images      String   @default("[]")       // JSON array
   weight      Float?
   karat       Int?
   notes       String?
@@ -133,6 +156,9 @@ model ExpertRequest {
   updatedAt   DateTime @updatedAt
 }
 
+// ============================================
+// مدل هشدارهای قیمت
+// ============================================
 model PriceAlert {
   id          String    @id @default(cuid())
   userId      String
@@ -145,6 +171,9 @@ model PriceAlert {
   triggeredAt DateTime?
 }
 
+// ============================================
+// مدل اخبار اقتصادی
+// ============================================
 model NewsItem {
   id          String   @id @default(cuid())
   title       String
@@ -155,13 +184,30 @@ model NewsItem {
   createdAt   DateTime @default(now())
 }
 
+// ============================================
+// مدل گزارش طلای سرقتی
+// ============================================
 model StolenGoldReport {
   id          String   @id @default(cuid())
   reporterId  String
   reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
   description String
-  images      String   @default("[]")
+  images      String   @default("[]")       // JSON array
   status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// مدل درخواست فروشندگی (خریدار → فروشنده)
+// ============================================
+model SellerRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName   String?
+  description String?
+  status      String   @default("PENDING")  // PENDING, APPROVED, REJECTED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

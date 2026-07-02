@@ -7,14 +7,15 @@ import { calculateGoldPrice } from "@/lib/price-calculator"
 import { ProductType } from "@prisma/client"
 import { parseImagesSafe } from "@/lib/utils"
 
+// دریافت قیمت زنده طلا (۱۸ عیار)
 async function getLiveGoldPrice(): Promise<number> {
   try {
     const lastPrice = await prisma.priceHistory.findFirst({
       orderBy: { createdAt: "desc" },
     })
-    return lastPrice?.price || 20000000
+    return lastPrice?.price || 17866900
   } catch {
-    return 20000000
+    return 17866900
   }
 }
 
@@ -77,35 +78,22 @@ export async function updateProduct(productId: string, formData: FormData) {
     throw new Error("شما مجاز به ویرایش این محصول نیستید")
   }
 
-  // خواندن مقادیر جدید (در صورت ارسال)، در غیر این صورت از مقادیر قبلی استفاده کن
-  const name = (formData.get("name") as string) || product.name
-  const weight = formData.get("weight") ? parseFloat(formData.get("weight") as string) : product.weight
-  const karat = formData.get("karat") ? parseInt(formData.get("karat") as string) : product.karat
-  const wage = formData.get("wage") ? parseFloat(formData.get("wage") as string) : product.wage
-  const profitPercent = formData.get("profitPercent")
-    ? parseFloat(formData.get("profitPercent") as string)
-    : product.profitPercent
-  const stock = formData.get("stock") ? parseInt(formData.get("stock") as string) : product.stock
-  const description = (formData.get("description") as string) ?? product.description
-  const barcode = (formData.get("barcode") as string) ?? product.barcode
-
-  // محاسبه قیمت نهایی با وزن و اجرت جدید
   const liveGoldPrice = await getLiveGoldPrice()
+  const wage = formData.get("wage") ? parseFloat(formData.get("wage") as string) : product.wage
+  const profitPercent = formData.get("profitPercent") ? parseFloat(formData.get("profitPercent") as string) : product.profitPercent
+  const weight = formData.get("weight") ? parseFloat(formData.get("weight") as string) : product.weight
   const priceBreakdown = calculateGoldPrice(weight, liveGoldPrice, wage, profitPercent)
 
   const updateData: any = {
-    name,
-    weight,
-    karat,
     wage,
     profitPercent,
+    weight,
     finalPrice: priceBreakdown.finalPrice,
-    stock,
-    description,
-    barcode,
+    stock: formData.get("stock") ? parseInt(formData.get("stock") as string) : product.stock,
+    description: (formData.get("description") as string) ?? product.description,
+    barcode: (formData.get("barcode") as string) ?? product.barcode,
   }
 
-  // به‌روزرسانی تصاویر در صورت ارسال
   const imageUrlsRaw = formData.get("imageUrls") as string | null
   if (imageUrlsRaw !== null) {
     const imageUrls = parseImagesSafe(imageUrlsRaw)
@@ -152,17 +140,9 @@ export async function getProducts(filters?: {
   if (filters?.verified) where.isVerified = true
   if (filters?.minWeight) where.weight = { ...where.weight, gte: filters.minWeight }
   if (filters?.maxWeight) where.weight = { ...where.weight, lte: filters.maxWeight }
-  if (filters?.minPrice) where.finalPrice = { ...where.finalPrice, gte: filters.minPrice }
-  if (filters?.maxPrice) where.finalPrice = { ...where.finalPrice, lte: filters.maxPrice }
 
-  const orderBy: any = {}
-  switch (filters?.sortBy) {
-    case "price_asc": orderBy.finalPrice = "asc"; break
-    case "price_desc": orderBy.finalPrice = "desc"; break
-    case "newest": orderBy.createdAt = "desc"; break
-    case "oldest": orderBy.createdAt = "asc"; break
-    default: orderBy.createdAt = "desc"
-  }
+  // فیلتر قیمت بر اساس قیمت لحظه‌ای انجام می‌شود (بعداً اعمال می‌کنیم)
+  const orderBy: any = { createdAt: "desc" }
 
   const products = await prisma.product.findMany({
     where,
@@ -174,8 +154,34 @@ export async function getProducts(filters?: {
     },
   })
 
-  return products.map((product) => ({
-    ...product,
-    images: parseImagesSafe(product.images),
-  }))
+  // دریافت قیمت زنده طلا
+  const liveGoldPrice = await getLiveGoldPrice()
+
+  // محاسبه قیمت نهایی به‌روز برای هر محصول
+  let updatedProducts = products.map((product) => {
+    const breakdown = calculateGoldPrice(product.weight, liveGoldPrice, product.wage, product.profitPercent)
+    return {
+      ...product,
+      images: parseImagesSafe(product.images),
+      finalPrice: breakdown.finalPrice,
+      priceBreakdown: breakdown,
+    }
+  })
+
+  // اعمال فیلتر قیمت (اگر وجود داشته باشد)
+  if (filters?.minPrice) {
+    updatedProducts = updatedProducts.filter((p) => p.finalPrice >= filters.minPrice!)
+  }
+  if (filters?.maxPrice) {
+    updatedProducts = updatedProducts.filter((p) => p.finalPrice <= filters.maxPrice!)
+  }
+
+  // مرتب‌سازی بر اساس قیمت (اگر درخواست شده باشد)
+  if (filters?.sortBy === "price_asc") {
+    updatedProducts.sort((a, b) => a.finalPrice - b.finalPrice)
+  } else if (filters?.sortBy === "price_desc") {
+    updatedProducts.sort((a, b) => b.finalPrice - a.finalPrice)
+  }
+
+  return updatedProducts
 }

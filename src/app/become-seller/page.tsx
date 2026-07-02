@@ -1,107 +1,95 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+// src/app/become-seller/page.tsx
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Store, FileText, Check } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { submitSellerRequest } from "@/server/seller-request-actions"
+import { Store, Loader2, CheckCircle } from "lucide-react"
+import { useSession } from "next-auth/react"
 
-const steps = [
-  {
-    title: "تکمیل اطلاعات",
-    description: "اطلاعات فروشگاه خود را تکمیل کنید",
-    icon: FileText,
-  },
-  {
-    title: "احراز هویت",
-    description: "مدارک خود را برای تأیید ارسال کنید",
-    icon: Check,
-  },
-  {
-    title: "شروع فروش",
-    description: "پس از تأیید، محصولات خود را ثبت کنید",
-    icon: Store,
-  },
-]
+export default function BecomeSellerPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
 
-export default async function BecomeSellerPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+  if (!session?.user) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <Store className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+        <h1 className="text-2xl font-bold text-gray-500">برای ثبت درخواست فروشندگی باید وارد شوید</h1>
+        <a href="/login" className="mt-4 inline-block">
+          <Button className="bg-yellow-500 hover:bg-yellow-600">ورود به حساب</Button>
+        </a>
+      </div>
+    )
+  }
 
   const user = session.user as any
-
-  if (user.role === "SELLER") {
+  if (user.role === "SELLER" || user.role === "ADMIN") {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <Store className="h-20 w-20 mx-auto text-yellow-500 mb-6" />
-        <h1 className="text-3xl font-bold mb-4">شما قبلاً فروشنده هستید!</h1>
-        <p className="text-gray-600 mb-6">به داشبورد فروشنده خود بروید</p>
-        <a href="/dashboard/seller">
+      <div className="container mx-auto px-4 py-16 text-center">
+        <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
+        <h1 className="text-2xl font-bold">شما قبلاً یک فروشنده هستید!</h1>
+        <p className="text-gray-600 mt-2">به داشبورد فروشنده خود بروید.</p>
+        <a href="/dashboard/seller" className="mt-4 inline-block">
           <Button className="bg-yellow-500 hover:bg-yellow-600">داشبورد فروشنده</Button>
         </a>
       </div>
     )
   }
 
+  async function handleSubmit(formData: FormData) {
+    setLoading(true)
+    try {
+      const result = await submitSellerRequest(formData)
+      if (result.success) {
+        toast.success(result.message)
+        router.push("/dashboard/buyer")
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="text-center mb-12">
+    <div className="container mx-auto px-4 py-8 max-w-xl">
+      <div className="text-center mb-8">
         <Store className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-        <h1 className="text-3xl font-bold">ثبت طلافروشی</h1>
+        <h1 className="text-3xl font-bold">ثبت فروشگاه جدید</h1>
         <p className="text-gray-600 mt-2">
-          فروشگاه طلای خود را در GoldMarket ثبت کنید و محصولات خود را بفروشید
+          لطفاً اطلاعات فروشگاه خود را وارد کنید. پس از تأیید ادمین، حساب شما به فروشنده ارتقا می‌یابد.
         </p>
       </div>
 
-      {/* مزایا */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="border-0 shadow-md text-center">
-          <CardContent className="p-6">
-            <p className="text-3xl mb-2">🛒</p>
-            <p className="font-bold">دسترسی به هزاران خریدار</p>
-            <p className="text-sm text-gray-500 mt-1">محصولات خود را به خریداران سراسر کشور عرضه کنید</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md text-center">
-          <CardContent className="p-6">
-            <p className="text-3xl mb-2">💰</p>
-            <p className="font-bold">تسویه آنی</p>
-            <p className="text-sm text-gray-500 mt-1">پس از هر فروش، مبلغ مستقیماً به کیف پول شما واریز می‌شود</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md text-center">
-          <CardContent className="p-6">
-            <p className="text-3xl mb-2">📊</p>
-            <p className="font-bold">گزارش‌های فروش</p>
-            <p className="text-sm text-gray-500 mt-1">گزارش‌های دقیق از فروش و سود خود دریافت کنید</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* مراحل */}
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <CardTitle>مراحل ثبت فروشگاه</CardTitle>
-          <CardDescription>برای ثبت فروشگاه طلای خود، مراحل زیر را طی کنید</CardDescription>
+          <CardTitle>اطلاعات فروشگاه</CardTitle>
+          <CardDescription>نام فروشگاه و توضیحات (اختیاری) را وارد کنید.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {steps.map((step, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <div className="p-3 bg-yellow-100 rounded-xl">
-                  <step.icon className="h-6 w-6 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="font-bold text-lg">
-                    {index + 1}. {step.title}
-                  </p>
-                  <p className="text-gray-600">{step.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <Button className="w-full mt-8 bg-yellow-500 hover:bg-yellow-600 py-6 text-lg">
-            شروع ثبت فروشگاه
-          </Button>
+          <form action={handleSubmit} className="space-y-4">
+            <div>
+              <Label>نام فروشگاه *</Label>
+              <Input name="storeName" placeholder="مثال: طلافروشی البرز" required />
+            </div>
+            <div>
+              <Label>توضیحات</Label>
+              <Textarea name="description" placeholder="توضیح کوتاه درباره فروشگاه شما..." rows={3} />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-600">
+              {loading ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : "ارسال درخواست"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

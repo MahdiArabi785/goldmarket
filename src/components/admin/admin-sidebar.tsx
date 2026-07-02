@@ -1,3 +1,4 @@
+// src/components/admin/admin-sidebar.tsx
 "use client"
 
 import Link from "next/link"
@@ -9,6 +10,7 @@ import {
   Package,
   UserPlus,
   Shield,
+  Store,
 } from "lucide-react"
 
 const adminLinks = [
@@ -16,6 +18,7 @@ const adminLinks = [
   { href: "/dashboard/admin/users", label: "مدیریت کاربران", icon: Users },
   { href: "/dashboard/admin/users/new", label: "افزودن کاربر جدید", icon: UserPlus },
   { href: "/dashboard/admin/products", label: "مدیریت محصولات", icon: Package },
+  { href: "/dashboard/admin/seller-requests", label: "درخواست‌های فروشندگی", icon: Store },
 ]
 
 export function AdminSidebar() {

@@ -1,49 +1,51 @@
+// src/app/api/profit-loss/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get("userId")
-
-  if (!userId) {
-    return NextResponse.json({ error: "شناسه کاربر الزامی است" }, { status: 400 })
+export async function GET() {
+  // همیشه JSON معتبر برگردان
+  const defaultResponse = {
+    totalInvested: 0,
+    currentValue: 0,
+    profit: 0,
+    percentage: 0,
   }
 
   try {
-    // دریافت میانگین قیمت خرید کاربر
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(defaultResponse, { status: 401 })
+    }
+
+    const userId = (session.user as any).id
+    if (!userId) return NextResponse.json(defaultResponse)
+
     const purchases = await prisma.order.findMany({
       where: {
         buyerId: userId,
         status: "COMPLETED",
       },
-      include: {
-        product: true,
-      },
+      include: { product: true },
     })
 
     if (purchases.length === 0) {
-      return NextResponse.json({
-        totalInvested: 0,
-        currentValue: 0,
-        profit: 0,
-        percentage: 0,
-      })
+      return NextResponse.json(defaultResponse)
     }
 
-    // دریافت قیمت لحظه‌ای طلا
+    // آخرین قیمت طلا از دیتابیس
     const latestPrice = await prisma.priceHistory.findFirst({
       orderBy: { createdAt: "desc" },
     })
-    const currentGoldPrice = latestPrice?.price || 20000000
+    const currentGoldPrice = latestPrice?.price || 17866900
 
-    // محاسبه ارزش فعلی و سرمایه‌گذاری‌شده
     let totalInvested = 0
     let totalWeight = 0
 
-    purchases.forEach((order) => {
+    for (const order of purchases) {
       totalInvested += order.totalPrice
       totalWeight += order.product.weight * order.quantity
-    })
+    }
 
     const currentValue = Math.round(totalWeight * currentGoldPrice)
     const profit = currentValue - totalInvested
@@ -56,6 +58,7 @@ export async function GET(request: Request) {
       percentage,
     })
   } catch (error) {
-    return NextResponse.json({ error: "خطا در محاسبه" }, { status: 500 })
+    console.error("❌ profit-loss error:", error)
+    return NextResponse.json(defaultResponse, { status: 500 })
   }
 }

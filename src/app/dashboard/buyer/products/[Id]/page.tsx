@@ -9,6 +9,7 @@ import { PurchaseForm } from "@/components/purchase-form"
 import { ProductImages } from "@/components/product-images"
 import { PriceBreakdownDisplay } from "@/components/price-breakdown"
 import { Shield, Weight, Gem, User } from "lucide-react"
+import { calculateGoldPrice } from "@/lib/price-calculator"
 
 const TYPE_LABEL: Record<string, string> = {
   NEW: "طلا نو",
@@ -16,7 +17,11 @@ const TYPE_LABEL: Record<string, string> = {
   MELTED: "آب شده",
 }
 
-export default async function ProductDetailPage({ params }: { params: Promise<{ Id: string }> }) {
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ Id: string }>
+}) {
   const session = await auth()
   if (!session?.user) redirect("/login")
 
@@ -33,21 +38,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound()
 
+  // دریافت قیمت زنده طلا
+  const lastPrice = await prisma.priceHistory.findFirst({
+    orderBy: { createdAt: "desc" },
+  })
+  const liveGoldPrice = lastPrice?.price || 17866900
+
+  // محاسبه قیمت نهایی به‌روز
+  const breakdown = calculateGoldPrice(
+    product.weight,
+    liveGoldPrice,
+    product.wage,
+    product.profitPercent,
+    9
+  )
+
   const isSeller = (session.user as any).id === product.sellerId
-
-  const liveGoldPrice = 20000000
-  const rawPrice = product.weight * liveGoldPrice
-  const profit = (rawPrice + product.wage) * (product.profitPercent / 100)
-  const tax = (rawPrice + product.wage + profit) * 0.09
-
-  const priceBreakdown = {
-    rawPrice: Math.round(rawPrice),
-    wage: product.wage,
-    profit: Math.round(profit),
-    tax: Math.round(tax),
-    finalPrice: product.finalPrice,
-  }
-
   const images = parseImagesSafe(product.images)
 
   return (
@@ -61,57 +67,85 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Badge className="bg-yellow-500">{TYPE_LABEL[product.type]}</Badge>
-              {product.isVerified && <Badge className="bg-emerald-500">✓ تأیید کارشناس</Badge>}
+              {product.isVerified && (
+                <Badge className="bg-emerald-500">✓ تأیید کارشناس</Badge>
+              )}
             </div>
             <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-            {product.description && <p className="text-gray-600 mt-2">{product.description}</p>}
+            {product.description && (
+              <p className="text-gray-600 mt-2">{product.description}</p>
+            )}
           </div>
 
           <Card className="border-0 shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-full"><User className="h-5 w-5 text-gray-600" /></div>
+                <div className="p-2 bg-gray-100 rounded-full">
+                  <User className="h-5 w-5 text-gray-600" />
+                </div>
                 <div>
                   <p className="font-medium">{product.seller.name || "فروشنده"}</p>
-                  <p className="text-sm text-gray-500">{product.seller._count.products} محصول فعال</p>
+                  <p className="text-sm text-gray-500">
+                    {product.seller._count.products} محصول فعال
+                  </p>
                 </div>
-                {product.isVerified && <Shield className="h-5 w-5 text-emerald-500 mr-auto" />}
+                {product.isVerified && (
+                  <Shield className="h-5 w-5 text-emerald-500 mr-auto" />
+                )}
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-md">
-            <CardHeader className="pb-2"><CardTitle className="text-lg">مشخصات محصول</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">مشخصات محصول</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center py-2">
-                <div className="flex items-center gap-2"><Weight className="h-4 w-4 text-gray-400" /><span className="text-gray-600">وزن</span></div>
+                <div className="flex items-center gap-2">
+                  <Weight className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">وزن</span>
+                </div>
                 <span className="font-bold">{product.weight} گرم</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center py-2">
-                <div className="flex items-center gap-2"><Gem className="h-4 w-4 text-gray-400" /><span className="text-gray-600">عیار</span></div>
+                <div className="flex items-center gap-2">
+                  <Gem className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">عیار</span>
+                </div>
                 <span className="font-bold">{product.karat}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600">موجودی</span>
-                {product.stock > 0 ? <span className="font-bold text-green-600">{product.stock} عدد</span> : <span className="font-bold text-red-600">ناموجود</span>}
+                {product.stock > 0 ? (
+                  <span className="font-bold text-green-600">{product.stock} عدد</span>
+                ) : (
+                  <span className="font-bold text-red-600">ناموجود</span>
+                )}
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-md">
-            <CardHeader className="pb-2"><CardTitle className="text-lg">جزئیات قیمت</CardTitle></CardHeader>
-            <CardContent><PriceBreakdownDisplay breakdown={priceBreakdown} /></CardContent>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">جزئیات قیمت</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriceBreakdownDisplay breakdown={breakdown} />
+            </CardContent>
           </Card>
 
           {!isSeller && product.stock > 0 && (
-            <PurchaseForm productId={product.id} finalPrice={product.finalPrice} maxQuantity={product.stock} />
+            <PurchaseForm productId={product.id} finalPrice={breakdown.finalPrice} maxQuantity={product.stock} />
           )}
 
           {isSeller && (
             <Card className="border-2 border-yellow-200 bg-yellow-50">
-              <CardContent className="p-4 text-center"><p className="text-yellow-700">این محصول متعلق به شماست</p></CardContent>
+              <CardContent className="p-4 text-center">
+                <p className="text-yellow-700">این محصول متعلق به شماست</p>
+              </CardContent>
             </Card>
           )}
         </div>

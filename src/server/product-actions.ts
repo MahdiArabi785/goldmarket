@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { calculateGoldPrice } from "@/lib/price-calculator"
-import { ProductType } from "@prisma/client"
+type ProductType = "NEW" | "SECOND_HAND" | "MELTED"
 import { parseImagesSafe } from "@/lib/utils"
 
 // دریافت قیمت زنده طلا (۱۸ عیار)

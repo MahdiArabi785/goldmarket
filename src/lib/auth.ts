@@ -8,7 +8,7 @@ export const authOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   pages: {
     signIn: "/login",
@@ -24,16 +24,14 @@ export const authOptions = {
         password: { label: "رمز عبور (مدیر)", type: "password" },
       },
       async authorize(credentials) {
-        // Admin root login (direct)
+        // Admin root login
         if (credentials?.username === "root" && credentials?.password === "toor") {
-          const user = await prisma.user.findFirst({
-            where: { phone: "root" },
-          })
+          const user = await prisma.user.findFirst({ where: { phone: "root" } })
           if (user && user.role === "ADMIN") {
             return {
               id: user.id,
-              phone: user.phone,
-              email: user.email,
+              phone: user.phone ?? undefined,
+              email: user.email ?? undefined,
               name: user.name,
               role: user.role,
             }
@@ -54,9 +52,7 @@ export const authOptions = {
           },
         })
 
-        if (!token) {
-          throw new Error("کد تأیید نامعتبر یا منقضی شده است")
-        }
+        if (!token) throw new Error("کد تأیید نامعتبر یا منقضی شده است")
 
         await prisma.verificationToken.delete({
           where: {
@@ -76,14 +72,12 @@ export const authOptions = {
           },
         })
 
-        if (!user) {
-          throw new Error("کاربری با این مشخصات یافت نشد")
-        }
+        if (!user) throw new Error("کاربری با این مشخصات یافت نشد")
 
         return {
           id: user.id,
-          phone: user.phone,
-          email: user.email,
+          phone: user.phone ?? undefined,
+          email: user.email ?? undefined,
           name: user.name,
           role: user.role,
         }
@@ -94,18 +88,18 @@ export const authOptions = {
     async jwt({ token, user }: any) {
       if (user) {
         token.sub = user.id
-        token.phone = user.phone
-        token.email = user.email
-        token.role = user.role
+        token.phone = (user as any).phone
+        token.email = (user as any).email
+        token.role = (user as any).role
       }
       return token
     },
     async session({ session, token }: any) {
       if (session.user) {
-        session.user.id = token.sub
-        session.user.phone = token.phone
-        session.user.email = token.email
-        session.user.role = token.role
+        (session.user as any).id = token.sub
+        ;(session.user as any).phone = token.phone
+        ;(session.user as any).email = token.email
+        ;(session.user as any).role = token.role
       }
       return session
     },

@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDate } from "@/lib/utils"
 import { Check, X, Loader2, User } from "lucide-react"
+import { parseImagesSafe } from "@/lib/utils" // ← اضافه شده
 
 interface ExpertRequestCardProps {
   request: {
@@ -17,7 +17,7 @@ interface ExpertRequestCardProps {
     weight: number | null
     karat: number | null
     notes: string | null
-    images: string[]
+    images: string  // ← از دیتابیس String می‌آید (نه String[])
     createdAt: Date
   }
 }
@@ -26,6 +26,9 @@ export function ExpertRequestCard({ request }: ExpertRequestCardProps) {
   const [loading, setLoading] = useState(false)
   const [expertNotes, setExpertNotes] = useState("")
   const router = useRouter()
+
+  // تبدیل امن images از رشته JSON به آرایه
+  const images = parseImagesSafe(request.images)
 
   const handleAction = async (status: "APPROVED" | "REJECTED") => {
     setLoading(true)
@@ -93,9 +96,9 @@ export function ExpertRequestCard({ request }: ExpertRequestCardProps) {
           </div>
 
           {/* تصاویر */}
-          {request.images.length > 0 && (
+          {images.length > 0 && (
             <div className="flex gap-2">
-              {request.images.map((image, index) => (
+              {images.map((image: string, index: number) => (
                 <img
                   key={index}
                   src={image}
@@ -140,4 +143,3 @@ export function ExpertRequestCard({ request }: ExpertRequestCardProps) {
     </Card>
   )
 }
-

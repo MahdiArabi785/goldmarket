@@ -1,11 +1,8 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { Providers } from "@/components/providers"
 import { Toaster } from "sonner"
-
-// const inter = Inter({ subsets: ["latin"], display: "swap", fallback: ["system-ui", "arial"] })
 
 export const metadata: Metadata = {
   title: "GoldMarket - بازار هوشمند طلا",
@@ -20,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" className="light" suppressHydrationWarning>
-      <body className={cn(inter.className, "min-h-screen bg-background text-foreground antialiased")}>
+      <body className={cn("min-h-screen bg-background text-foreground antialiased")}>
         <Providers>
           {children}
           <Toaster 

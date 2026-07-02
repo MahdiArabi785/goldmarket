@@ -1,3 +1,4 @@
+// src/app/dashboard/expert/page.tsx
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,16 +8,25 @@ import { Shield, Clock, CheckCircle, XCircle } from "lucide-react"
 
 export default async function ExpertDashboard() {
   const session = await auth()
-  if (!session?.user) redirect("/auth/login")
+  if (!session?.user) redirect("/login")
 
   const userId = (session.user as any).id
+  const role = (session.user as any).role
 
-  const [pendingRequests, approvedRequests, rejectedRequests] = await Promise.all([
-    prisma.expertRequest.findMany({
-      where: { status: "PENDING" },
-      include: { user: { select: { name: true, phone: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
+  // فقط کارشناس یا ادمین می‌توانند وارد این صفحه شوند
+  if (role !== "EXPERT" && role !== "ADMIN") {
+    redirect("/dashboard/buyer")
+  }
+
+  // دریافت درخواست‌های در حال بررسی
+  const pendingRequests = await prisma.expertRequest.findMany({
+    where: { status: "PENDING" },
+    include: { user: { select: { name: true, phone: true } } },
+    orderBy: { createdAt: "desc" },
+  })
+
+  // تعداد تأیید شده‌ها و رد شده‌ها
+  const [approvedCount, rejectedCount] = await Promise.all([
     prisma.expertRequest.count({ where: { reviewedBy: userId, status: "APPROVED" } }),
     prisma.expertRequest.count({ where: { reviewedBy: userId, status: "REJECTED" } }),
   ])
@@ -31,14 +41,14 @@ export default async function ExpertDashboard() {
     },
     {
       title: "تأیید شده",
-      value: `${approvedRequests} مورد`,
+      value: `${approvedCount} مورد`,
       icon: CheckCircle,
       color: "text-green-600",
       bg: "bg-green-50",
     },
     {
       title: "رد شده",
-      value: `${rejectedRequests} مورد`,
+      value: `${rejectedCount} مورد`,
       icon: XCircle,
       color: "text-red-600",
       bg: "bg-red-50",
@@ -55,6 +65,7 @@ export default async function ExpertDashboard() {
         <p className="text-gray-600 mt-2">بررسی و تأیید طلاهای دست دوم</p>
       </div>
 
+      {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <Card key={index} className="border-0 shadow-md">
@@ -73,6 +84,7 @@ export default async function ExpertDashboard() {
         ))}
       </div>
 
+      {/* درخواست‌های در انتظار بررسی */}
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>درخواست‌های در انتظار بررسی</CardTitle>

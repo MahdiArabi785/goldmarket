@@ -56,7 +56,7 @@ export function GoldPriceChart({ data }: { data: PriceData[] }) {
             boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
             fontFamily: "inherit",
           }}
-          formatter={(value: number) => [`${value.toLocaleString("fa-IR")} تومان`, "قیمت"]}
+          formatter={(value: any) => [`${value.toLocaleString("fa-IR")} تومان`, "قیمت"]}
         />
         <Area
           type="monotone"

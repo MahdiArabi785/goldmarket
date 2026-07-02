@@ -1,4 +1,9 @@
-import { UserRole, ProductType, OrderStatus } from '@prisma/client'
+// src/types/index.ts
+
+// به‌جای import از Prisma، خودمان enumها را تعریف می‌کنیم
+export type UserRole = "BUYER" | "SELLER" | "EXPERT" | "ADMIN"
+export type ProductType = "NEW" | "SECOND_HAND" | "MELTED"
+export type OrderStatus = "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPED" | "DELIVERED" | "COMPLETED" | "CANCELLED"
 
 export interface UserSession {
   id: string
@@ -49,7 +54,7 @@ export interface PriceHistoryItem {
 
 export interface AnalysisSignal {
   type: 'BUY' | 'SELL' | 'HOLD'
-  strength: number // ۰ تا ۱۰۰
+  strength: number
   reason: string
   technicalScore: number
   fundamentalScore: number
